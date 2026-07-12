@@ -13,12 +13,13 @@ your machine: not a single byte of the recording ever leaves it.
 </p>
 
 <p>
+<a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/legolev/speakagent_desktop?style=flat&color=f59e0b&label=release" alt="Latest release"></a>
+<a href="../../actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/legolev/speakagent_desktop/ci.yml?style=flat&label=CI" alt="CI"></a>
 <img src="https://img.shields.io/badge/Windows-10%2F11-0a0a0b?style=flat&logo=windows11&logoColor=fbbf24" alt="Windows 10/11">
-<img src="https://img.shields.io/badge/macOS-Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Apple Silicon">
+<img src="https://img.shields.io/badge/macOS-Intel%20%2B%20Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Intel + Apple Silicon">
 <img src="https://img.shields.io/badge/100%25-offline-16a34a?style=flat" alt="100% offline">
 <img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-f59e0b?style=flat" alt="PolyForm NC license">
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
-<img src="https://img.shields.io/badge/Rust%20%2B%20React-52525b?style=flat&logo=rust&logoColor=white" alt="Rust + React">
 </p>
 
 </div>
@@ -53,6 +54,10 @@ your machine: not a single byte of the recording ever leaves it.
 | ⚡ **GPU acceleration for notes** | A discrete Vulkan GPU (≥ 4 GB VRAM) speeds the LLM up ~10× automatically; on an iGPU / without Vulkan it silently falls back to CPU. |
 | 📥 **Honest auto-download** | A first-run wizard and background downloads with real sizes shown in the UI; small models are embedded in the installer. |
 | 🖱️ **Drag & drop, cancel, ETA** | File drag-and-drop, a Stop button, self-calibrating time estimates, and a live status bar with CPU/RAM load. |
+| 🎙️ **Dictation (push-to-talk)** | A global hotkey (even a single key — e.g. right Shift): hold → speak, release → text is recognized locally, copied to the clipboard and pasted at the cursor in any app. History of quick recognitions on its own tab. |
+| 🔌 **Local MCP server** | A built-in Model Context Protocol server on `127.0.0.1`: any AI/code agent (Claude Code, Cursor, VS Code, Codex) can drive the engine — transcribe files, diarize, make protocols, browse history. One-click add-to-client buttons. |
+| 🖥️ **Tray + background** | Minimizes to the tray (system-style icon); closing the window doesn't stop processing or the MCP server. |
+| ⬆️ **Auto-update** | About → "Check": the app finds a newer GitHub release, downloads and installs it seamlessly (signed updates). |
 
 ## 🎬 Screenshots
 
@@ -128,8 +133,16 @@ CPU measurements (Phase 0 and real meetings). A GPU only helps the notes — it 
 
 ### Prebuilt installer
 
-Built installers (~8 MB, Windows 10/11) will be published under
-[**Releases**](../../releases). _(releases coming soon)_
+Download the latest installer from [**Releases**](../../releases):
+- **macOS Apple Silicon (M1+)** — `*_aarch64.dmg`;
+- **macOS Intel** — `*_x64.dmg`;
+- **Windows 10/11** — `*-setup.exe` (NSIS).
+
+An installed app **updates itself**: About → "Check" (or a silent check when the page opens)
+finds a new GitHub release and installs it seamlessly.
+
+> The app isn't code-signed with a paid developer certificate yet, so the first launch shows
+> a warning: on macOS right-click → "Open"; on Windows "More info" → "Run anyway".
 
 ### Build from source
 
@@ -172,8 +185,11 @@ cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|
 | 0 | Validate the core (sherpa-onnx) on real files | ✅ Done |
 | 1 | Windows MVP: transcription + diarization, models, export, history, player | ✅ Done |
 | 3 | Meeting notes — protocols/summaries/to-dos via a local LLM | ✅ Done |
-| 2 | macOS (Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Done |
-| 4 | Monetization / licensing, auto-update, code signing | ⬜ Planned |
+| 2 | macOS (Intel + Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Done |
+| — | Dictation (push-to-talk), local MCP server, tray | ✅ Done |
+| — | Auto-update (GitHub Releases, signed updates) | ✅ Done |
+| 4 | Monetization / licensing, code signing (Gatekeeper/SmartScreen) | ⬜ Planned |
+| 5+ | Folder watch, subtitle editor, glossary, i18n, live streaming | ⬜ Planned |
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 

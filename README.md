@@ -13,12 +13,13 @@
 </p>
 
 <p>
+<a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/legolev/speakagent_desktop?style=flat&color=f59e0b&label=релиз" alt="Последний релиз"></a>
+<a href="../../actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/legolev/speakagent_desktop/ci.yml?style=flat&label=CI" alt="CI"></a>
 <img src="https://img.shields.io/badge/Windows-10%2F11-0a0a0b?style=flat&logo=windows11&logoColor=fbbf24" alt="Windows 10/11">
-<img src="https://img.shields.io/badge/macOS-Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Apple Silicon">
+<img src="https://img.shields.io/badge/macOS-Intel%20%2B%20Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Intel + Apple Silicon">
 <img src="https://img.shields.io/badge/100%25-офлайн-16a34a?style=flat" alt="100% офлайн">
 <img src="https://img.shields.io/badge/лицензия-PolyForm%20NC%201.0.0-f59e0b?style=flat" alt="Лицензия PolyForm NC">
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
-<img src="https://img.shields.io/badge/Rust%20%2B%20React-52525b?style=flat&logo=rust&logoColor=white" alt="Rust + React">
 </p>
 
 </div>
@@ -133,8 +134,9 @@ flowchart LR
 ### Готовый установщик
 
 Скачайте свежий установщик со страницы [**Releases**](../../releases):
-- **macOS (Apple Silicon)** — `.dmg`;
-- **Windows 10/11** — `.exe` (NSIS).
+- **macOS Apple Silicon (M1+)** — `*_aarch64.dmg`;
+- **macOS Intel** — `*_x64.dmg`;
+- **Windows 10/11** — `*-setup.exe` (NSIS).
 
 Установленное приложение **обновляется само**: «О приложении» → «Проверить» (или тихая
 автопроверка при открытии страницы) находит новый релиз на GitHub и ставит его бесшовно.
@@ -206,8 +208,11 @@ CI соберёт macOS (arm64) и Windows, подпишет артефакты 
 | 0 | Валидация ядра (sherpa-onnx) на реальных файлах | ✅ Готово |
 | 1 | Windows MVP: транскрипция + диаризация, модели, экспорт, история, плеер | ✅ Готово |
 | 3 | «Итоги встречи» — протоколы/саммари/задачи через локальную LLM | ✅ Готово |
-| 2 | macOS (Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Готово |
-| 4 | Монетизация / лицензирование, авто-обновление, подпись кода | ⬜ Планы |
+| 2 | macOS (Intel + Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Готово |
+| — | Диктовка (push-to-talk), локальный MCP-сервер, трей | ✅ Готово |
+| — | Авто-обновление (GitHub Releases, подписанные обновления) | ✅ Готово |
+| 4 | Монетизация / лицензирование, подпись кода (Gatekeeper/SmartScreen) | ⬜ Планы |
+| 5+ | Папка-watch, редактор субтитров, глоссарий, i18n, live-стриминг | ⬜ Планы |
 
 Историю изменений см. в [`CHANGELOG.md`](CHANGELOG.md).
 
