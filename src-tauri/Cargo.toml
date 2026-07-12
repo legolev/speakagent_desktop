@@ -53,7 +53,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 # Генерация PDF со встроенным шрифтом (кириллица)
 genpdf = "0.2"
 # Детект железа и нагрузки (ядра, RAM, CPU%)
-sysinfo = "0.32"
+sysinfo = "0.39"
 # Восстановление пунктуации/регистра (RUPunct): чистый-Rust ONNX-рантайм tract —
 # НЕ линкует onnxruntime (у sherpa свой, статический) → без второй DLL и без cmake.
 tract-onnx = "0.21"
