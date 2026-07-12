@@ -28,16 +28,16 @@ import {
 import { useJobs } from "../store/jobs";
 import { exportArtifactMd, exportArtifactPdf, exportArtifactTxt } from "../lib/exporters";
 
-type Tab = "text" | "summary" | "protocol" | "todo";
+export type Tab = "text" | "summary" | "protocol" | "todo";
 
-const TABS: { id: Tab; label: string; icon: typeof AlignLeft }[] = [
+export const TABS: { id: Tab; label: string; icon: typeof AlignLeft }[] = [
   { id: "text", label: "Текст", icon: AlignLeft },
   { id: "summary", label: "Саммари", icon: ScrollText },
   { id: "protocol", label: "Протокол", icon: NotebookPen },
   { id: "todo", label: "Задачи", icon: ListChecks },
 ];
 
-const KIND_TITLE: Record<string, string> = {
+export const KIND_TITLE: Record<string, string> = {
   summary: "Саммари",
   business: "Протокол",
   interview: "Протокол собеседования",
@@ -113,7 +113,7 @@ export default function MeetingResults({ jobId, name, textLen, children }: Props
 
 // ── Панель одного артефакта ──
 
-function ArtifactPanel({
+export function ArtifactPanel({
   jobId,
   kind,
   exportName,

@@ -20,8 +20,37 @@ pub fn decode_to_16k_mono(path: &str) -> Result<Vec<f32>, String> {
     decode_to_16k_mono_max(path, None)
 }
 
-/// Декод с опциональным лимитом длины (сек). Сначала symphonia, при неудаче — ffmpeg.
+/// Контейнеры, которые обычно несут AAC. AAC-декодер symphonia ИСКАЖАЕТ звук (даёт
+/// правдоподобные, но неверные сэмплы → «каша» в распознавании; ffmpeg декодирует верно),
+/// поэтому для них сразу идём в ffmpeg. ffmpeg — обязательная инфра-модель (качается на старте).
+fn prefers_ffmpeg(path: &str) -> bool {
+    matches!(
+        Path::new(path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .as_deref(),
+        Some("mp4" | "m4a" | "m4v" | "aac" | "mov" | "3gp" | "3gpp")
+    )
+}
+
+/// Декод с опциональным лимитом длины (сек).
+/// AAC/mp4 — сначала ffmpeg (symphonia портит AAC), остальное — сначала symphonia.
+/// Другой декодер всегда остаётся запасным.
 pub fn decode_to_16k_mono_max(path: &str, max_secs: Option<f32>) -> Result<Vec<f32>, String> {
+    if prefers_ffmpeg(path) {
+        // AAC-контейнер: ffmpeg верно декодирует; symphonia — только если ffmpeg ещё не скачан.
+        if let Some(ff) = ffmpeg_bin() {
+            return match decode_with_ffmpeg(path, &ff, max_secs) {
+                Ok(s) => Ok(s),
+                Err(ff_err) => decode_symphonia(path, max_secs).map_err(|sym_err| {
+                    format!("не удалось декодировать (ffmpeg: {ff_err}; symphonia: {sym_err})")
+                }),
+            };
+        }
+        return decode_symphonia(path, max_secs);
+    }
+    // mp3/wav/flac/ogg — symphonia надёжен; ffmpeg в запас (webm/opus и прочее).
     match decode_symphonia(path, max_secs) {
         Ok(s) => Ok(s),
         Err(sym_err) => match ffmpeg_bin() {

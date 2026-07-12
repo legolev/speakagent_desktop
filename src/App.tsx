@@ -4,8 +4,8 @@ import Layout from "./components/Layout";
 import Onboarding from "./components/Onboarding";
 import HomePage from "./pages/HomePage";
 import TranscribePage from "./pages/TranscribePage";
-import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
+import AboutPage from "./pages/AboutPage";
 import { isReady } from "./lib/api";
 import { useUi } from "./store/ui";
 
@@ -22,8 +22,10 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/transcribe" element={<TranscribePage />} />
-          <Route path="/history" element={<HistoryPage />} />
+          {/* История объединена с «Расшифровкой» — старый путь ведёт туда же. */}
+          <Route path="/history" element={<Navigate to="/transcribe" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

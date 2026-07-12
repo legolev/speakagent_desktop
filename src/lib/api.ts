@@ -17,11 +17,16 @@ export interface Progress {
   done: number;
   total: number;
   partial: string;
+  audioSec: number; // длительность записи, сек (>0 на финальном сообщении)
 }
 
 export const appInfo = () => invoke<AppInfo>("app_info");
 export const fileInfo = (path: string) => invoke<FileInfo>("file_info", { path });
 export const openDataDir = () => invoke<void>("open_data_dir");
+/** Открыть внешний http(s)-адрес в системном браузере. */
+export const openUrl = (url: string) => invoke<void>("open_url", { url });
+/** Показать файл в системном менеджере (Finder/Explorer) с выделением. */
+export const revealFile = (path: string) => invoke<void>("reveal_file", { path });
 
 export interface SystemInfo {
   physicalCores: number;
@@ -89,6 +94,7 @@ export interface StoredJob {
   error: string;
   createdAt: number;
   speakers: string; // JSON {номер: имя}
+  durationSec?: number | null; // длительность записи, сек
 }
 
 export const listJobs = () => invoke<StoredJob[]>("list_jobs");
@@ -164,6 +170,22 @@ export const llmDisplayName = (jobId: string) => invoke<string>("llm_display_nam
 export const activeLlmModel = () => invoke<string>("active_llm_model");
 export const setActiveLlmModel = (id: string) => invoke<void>("set_active_llm_model", { id });
 
+// ── ИИ-провайдер: локальный движок ↔ облако (OpenAI-совместимое) ──
+export type LlmBackend = "local" | "cloud";
+export interface CloudConfig {
+  url: string;
+  model: string;
+  key: string;
+}
+export const llmBackend = () => invoke<LlmBackend>("llm_backend");
+export const setLlmBackend = (mode: LlmBackend) => invoke<void>("set_llm_backend", { mode });
+export const cloudConfig = () => invoke<CloudConfig>("cloud_config");
+export const setCloudConfig = (url: string, model: string, key: string) =>
+  invoke<void>("set_cloud_config", { url, model, key });
+/** Проверить связь с облачным провайдером — возвращает короткий ответ модели. */
+export const testCloud = (url: string, model: string, key: string) =>
+  invoke<string>("test_cloud", { url, model, key });
+
 const MEDIA_EXTS = [
   "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "oga",
   "mp4", "mov", "mkv", "webm", "avi", "m4v", "ts",
@@ -177,4 +199,15 @@ export async function pickAudioFile(): Promise<string | null> {
     filters: [{ name: "Аудио и видео", extensions: MEDIA_EXTS }],
   });
   return typeof res === "string" ? res : null;
+}
+
+/** Нативный выбор одного или нескольких файлов (для очереди). */
+export async function pickAudioFiles(): Promise<string[]> {
+  const res = await open({
+    multiple: true,
+    directory: false,
+    filters: [{ name: "Аудио и видео", extensions: MEDIA_EXTS }],
+  });
+  if (Array.isArray(res)) return res;
+  return typeof res === "string" ? [res] : [];
 }

@@ -22,9 +22,10 @@ export default function DragDropOverlay() {
           setActive(false);
         } else if (p.type === "drop") {
           setActive(false);
-          const path = p.paths.find((x) => MEDIA.test(x)) ?? p.paths[0];
-          if (path) {
-            setDropped(path);
+          // все медиафайлы из брошенного набора → в очередь
+          const paths = p.paths.filter((x) => MEDIA.test(x));
+          if (paths.length) {
+            setDropped(paths);
             navigate("/transcribe");
           }
         }

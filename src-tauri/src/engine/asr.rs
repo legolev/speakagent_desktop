@@ -174,8 +174,11 @@ impl Asr {
         }
         if let Some(res) = self.decode(seg) {
             match res.timestamps {
-                Some(times) => push_words(&res.tokens, &times, offset, out),
-                None => {
+                // Пословные таймкоды (GigaAM/Parakeet CTC/transducer) → точная привязка к спикерам.
+                Some(times) if !times.is_empty() => push_words(&res.tokens, &times, offset, out),
+                // Whisper даёт текст, но timestamps=Some(пусто) → берём текст сегмента целиком
+                // (диаризация огрубляется до границы VAD-сегмента — у whisper пословных нет).
+                _ => {
                     let t = res.text.trim();
                     if !t.is_empty() {
                         out.push(Word {

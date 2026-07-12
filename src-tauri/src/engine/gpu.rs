@@ -14,7 +14,9 @@ impl GpuInfo {
 }
 
 /// Минимум видеопамяти для выгрузки 4B-модели с контекстом (и отсечка iGPU,
-/// которые на Vulkan бывают МЕДЛЕННЕЕ CPU).
+/// которые на Vulkan бывают МЕДЛЕННЕЕ CPU). Используется только в Windows-ветке
+/// (на macOS Metal всегда есть — порог по unified RAM внутри should_offload).
+#[cfg(windows)]
 const MIN_VRAM_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
 /// Все аппаратные адаптеры (без Microsoft Basic Render Driver).
@@ -70,6 +72,13 @@ pub fn vulkan_available() -> bool {
 
 /// Лучший адаптер (для отображения в системной строке — без порога).
 pub fn best_gpu() -> Option<GpuInfo> {
+    // На macOS дискретных адаптеров нет (detect_gpus пуст) → показываем ускоритель Metal,
+    // иначе в UI «Итоги ускоряются видеокартой ()» с пустыми скобками.
+    #[cfg(target_os = "macos")]
+    {
+        return should_offload();
+    }
+    #[cfg(not(target_os = "macos"))]
     detect_gpus().into_iter().max_by_key(|g| g.vram_bytes)
 }
 

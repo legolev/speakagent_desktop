@@ -211,6 +211,8 @@ struct Progress {
     done: usize,
     total: usize,
     partial: String,
+    /// Длительность записи, сек (известна после декода; 0 до того) — для истории.
+    audio_sec: f32,
 }
 
 /// Порог кластеризации диаризации (используется, когда число спикеров неизвестно).
@@ -239,6 +241,7 @@ async fn transcribe(
                 done,
                 total,
                 partial: partial.to_string(),
+                audio_sec: 0.0,
             });
         };
 
@@ -317,7 +320,14 @@ async fn transcribe(
             let _ = engine::store::set_setting("measured_overhead", &format!("{overhead_sec:.1}"));
         }
 
-        send("done", 1, 1, &out);
+        // финальное сообщение несёт реальную длительность записи (для истории)
+        let _ = on_progress.send(Progress {
+            stage: "done".into(),
+            done: 1,
+            total: 1,
+            partial: out.clone(),
+            audio_sec: audio_sec as f32,
+        });
         Ok::<String, String>(out)
     })
     .await
@@ -590,6 +600,107 @@ fn set_active_llm_model(id: String) -> Result<(), String> {
     engine::models::set_active_llm(&id)
 }
 
+// ─────────────── ИИ-провайдер: локальный движок ↔ облако ───────────────
+
+/// Какой бэкенд «Итогов»: "local" (llama-server) или "cloud" (OpenAI-совместимый провайдер).
+#[tauri::command]
+fn llm_backend() -> String {
+    engine::store::get_setting("llm_backend").unwrap_or_else(|| "local".into())
+}
+
+#[tauri::command]
+fn set_llm_backend(mode: String) -> Result<(), String> {
+    if mode != "local" && mode != "cloud" {
+        return Err("неизвестный режим".into());
+    }
+    if mode == "cloud" {
+        engine::llm::shutdown(); // локальный сервер больше не нужен
+    }
+    engine::store::set_setting("llm_backend", &mode)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CloudConfig {
+    url: String,
+    model: String,
+    key: String,
+}
+
+/// Текущие настройки облачного провайдера (с дефолтами для полей формы).
+#[tauri::command]
+fn cloud_config() -> CloudConfig {
+    CloudConfig {
+        url: engine::store::get_setting("cloud_url")
+            .unwrap_or_else(|| "https://openrouter.ai/api/v1".into()),
+        model: engine::store::get_setting("cloud_model")
+            .unwrap_or_else(|| "openai/gpt-4o-mini".into()),
+        key: engine::store::get_setting("cloud_key").unwrap_or_default(),
+    }
+}
+
+#[tauri::command]
+fn set_cloud_config(url: String, model: String, key: String) -> Result<(), String> {
+    engine::store::set_setting("cloud_url", url.trim())?;
+    engine::store::set_setting("cloud_model", model.trim())?;
+    engine::store::set_setting("cloud_key", key.trim())
+}
+
+/// Проверить связь с облачным провайдером (мини-запрос). Возвращает ответ модели.
+#[tauri::command]
+async fn test_cloud(url: String, model: String, key: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || engine::llm::cloud_test(&url, &model, &key))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Показать файл в системном менеджере (Finder/Explorer) с выделением.
+#[tauri::command]
+fn reveal_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("open");
+        c.arg("-R").arg(&path);
+        c
+    };
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("explorer");
+        c.arg(format!("/select,{path}"));
+        c
+    };
+    #[cfg(target_os = "linux")]
+    let mut cmd = {
+        let dir = std::path::Path::new(&path)
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| ".".into());
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(dir);
+        c
+    };
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Открыть внешний http(s)-адрес в системном браузере (для ссылки на репозиторий и т.п.).
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("недопустимый адрес".into());
+    }
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(target_os = "linux")]
+    let program = "xdg-open";
+    std::process::Command::new(program)
+        .arg(&url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -629,7 +740,14 @@ pub fn run() {
             llm_export_prompt,
             llm_display_name,
             active_llm_model,
-            set_active_llm_model
+            set_active_llm_model,
+            llm_backend,
+            set_llm_backend,
+            cloud_config,
+            set_cloud_config,
+            test_cloud,
+            open_url,
+            reveal_file
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

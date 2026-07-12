@@ -229,6 +229,20 @@ pub const CATALOG: &[Spec] = &[
         required: false,
         files: &[],
     },
+    Spec {
+        id: "whisper-turbo",
+        name: "Whisper large-v3 turbo",
+        kind: "asr",
+        lang: "99 языков",
+        // large-v3-turbo (в sherpa — «turbo»): устойчивее к шуму/музыке, чем GigaAM, но
+        // ТЯЖЁЛЫЙ и МЕДЛЕННЫЙ на CPU (~1,6 ГБ в память). Для сильных машин / трудного аудио.
+        url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-turbo.tar.bz2",
+        format: Format::TarBz2,
+        check: "sherpa-onnx-whisper-turbo/turbo-encoder.int8.onnx",
+        size_mb: 540,
+        required: false,
+        files: &[],
+    },
     // ── Модели «Итогов встречи» (локальный LLM, выбираются в Настройках) ──
     Spec {
         id: "llm-qwen3-4b",
@@ -418,17 +432,30 @@ pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), S
                 let mut ar = tar::Archive::new(gz);
                 for entry in ar.entries().map_err(|e| e.to_string())? {
                     let mut entry = entry.map_err(|e| e.to_string())?;
-                    if !entry.header().entry_type().is_file() {
-                        continue;
-                    }
+                    let et = entry.header().entry_type();
                     let path = entry.path().map_err(|e| e.to_string())?.into_owned();
                     let base = path
                         .file_name()
                         .and_then(|s| s.to_str())
                         .unwrap_or("")
                         .to_string();
-                    if keep(&base) {
-                        let dest = dest_dir.join(&base);
+                    if base.is_empty() || !keep(&base) {
+                        continue;
+                    }
+                    let dest = dest_dir.join(&base);
+                    if et.is_symlink() {
+                        // macOS-сборка llama содержит версионные симлинки
+                        // (libX.0.dylib → libX.0.0.9957.dylib); dyld грузит по
+                        // @rpath/libX.0.dylib, поэтому симлинк обязателен. Пересоздаём
+                        // плоско — по basename цели (все дилибы лежат в одной папке).
+                        #[cfg(unix)]
+                        if let Ok(Some(target)) = entry.link_name().map(|o| o.map(|p| p.into_owned())) {
+                            if let Some(tgt) = target.file_name().and_then(|s| s.to_str()) {
+                                let _ = std::fs::remove_file(&dest);
+                                let _ = std::os::unix::fs::symlink(tgt, &dest);
+                            }
+                        }
+                    } else if et.is_file() {
                         let mut out = File::create(&dest).map_err(|e| e.to_string())?;
                         std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
                         drop(out);
@@ -566,6 +593,17 @@ fn asr_files(id: &str) -> Option<AsrFiles> {
                 decoder: resolve(&format!("{b}/small-decoder.int8.onnx"))?.to_str()?.into(),
                 joiner: String::new(),
                 tokens: resolve(&format!("{b}/small-tokens.txt"))?.to_str()?.into(),
+                language: "ru".into(),
+            })
+        }
+        "whisper-turbo" => {
+            let b = "sherpa-onnx-whisper-turbo";
+            Some(AsrFiles {
+                engine: Engine::Whisper,
+                model: resolve(&format!("{b}/turbo-encoder.int8.onnx"))?.to_str()?.into(),
+                decoder: resolve(&format!("{b}/turbo-decoder.int8.onnx"))?.to_str()?.into(),
+                joiner: String::new(),
+                tokens: resolve(&format!("{b}/turbo-tokens.txt"))?.to_str()?.into(),
                 language: "ru".into(),
             })
         }

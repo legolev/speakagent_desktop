@@ -13,7 +13,11 @@ concurrency:
 jobs:
   frontend:
     name: Frontend (build)
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -28,12 +32,24 @@ jobs:
 
   rust:
     name: Rust (check)
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: src-tauri
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # tauri-build валидирует bundle.resources (мелкие вшиваемые модели) — их надо
+      # скачать до cargo check, иначе build.rs падает «resource path doesn't exist».
+      # Скрипт использует только node-builtins + системный tar (bsdtar есть на обоих ранерах).
+      - name: Fetch bundled models
+        run: node ../scripts/fetch-models.mjs
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

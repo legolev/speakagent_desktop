@@ -14,7 +14,7 @@ your machine: not a single byte of the recording ever leaves it.
 
 <p>
 <img src="https://img.shields.io/badge/Windows-10%2F11-0a0a0b?style=flat&logo=windows11&logoColor=fbbf24" alt="Windows 10/11">
-<img src="https://img.shields.io/badge/macOS-soon-52525b?style=flat&logo=apple&logoColor=white" alt="macOS soon">
+<img src="https://img.shields.io/badge/macOS-Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Apple Silicon">
 <img src="https://img.shields.io/badge/100%25-offline-16a34a?style=flat" alt="100% offline">
 <img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-f59e0b?style=flat" alt="PolyForm NC license">
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
@@ -172,7 +172,7 @@ cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|
 | 0 | Validate the core (sherpa-onnx) on real files | ✅ Done |
 | 1 | Windows MVP: transcription + diarization, models, export, history, player | ✅ Done |
 | 3 | Meeting notes — protocols/summaries/to-dos via a local LLM | ✅ Done |
-| 2 | macOS (Apple Silicon) + GPU acceleration | 🔜 Next (partly started) |
+| 2 | macOS (Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Done |
 | 4 | Monetization / licensing, auto-update, code signing | ⬜ Planned |
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full history.

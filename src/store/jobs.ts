@@ -50,22 +50,36 @@ export interface Job {
   stageStartedAt: number;
 }
 
+/** Запись, ожидающая обработки в очереди (несколько файлов подряд). */
+export interface QueueItem {
+  path: string;
+  name: string;
+  diarize: boolean;
+  durationSec?: number;
+  numSpeakers?: number;
+}
+
 interface JobsState {
   jobs: Job[];
+  /** Очередь на обработку — файлы обрабатываются по одному (тяжёлая CPU-работа). */
+  queue: QueueItem[];
   /** Итоги по записям: jobId → kind → состояние. Живёт в сторе — переживает навигацию. */
   results: Record<string, Partial<Record<ResultKind, ResultState>>>;
   hydrate: () => Promise<void>;
-  start: (
-    path: string,
-    name: string,
-    diarize: boolean,
-    durationSec?: number,
-    numSpeakers?: number,
-  ) => string;
+  /** Добавить записи в очередь (и запустить обработку, если простаивает). */
+  enqueue: (items: QueueItem[]) => void;
+  /** Запустить следующий элемент очереди, если сейчас ничего не обрабатывается. */
+  pump: () => void;
+  /** Убрать элемент очереди по индексу (ещё не начатый). */
+  dequeue: (index: number) => void;
   cancel: (id: string) => void;
   rename: (id: string, speaker: number, name: string) => void;
+  /** Переименовать саму запись (её название в истории). */
+  renameJob: (id: string, name: string) => void;
   remove: (id: string) => void;
   clear: () => void;
+  /** Перезапустить расшифровку существующей записи (той же id) — «расшифровать заново». */
+  retranscribe: (id: string) => void;
   /** Подтянуть сохранённые итоги записи из SQLite (при открытии). */
   hydrateResults: (jobId: string) => Promise<void>;
   /** Запустить генерацию итога. */
@@ -88,11 +102,13 @@ function toStored(j: Job): StoredJob {
     error: j.error ?? "",
     createdAt: j.startedAt,
     speakers: JSON.stringify(j.names ?? {}),
+    durationSec: j.durationSec ?? null,
   };
 }
 
 export const useJobs = create<JobsState>((set, get) => ({
   jobs: [],
+  queue: [],
   results: {},
 
   hydrate: async () => {
@@ -119,6 +135,7 @@ export const useJobs = create<JobsState>((set, get) => ({
             text: s.status === "done" ? s.text : undefined,
             error: s.status === "error" ? s.error : undefined,
             names,
+            durationSec: s.durationSec ?? undefined,
             startedAt: s.createdAt,
             stageStartedAt: s.createdAt,
           };
@@ -129,28 +146,45 @@ export const useJobs = create<JobsState>((set, get) => ({
     }
   },
 
-  start: (path, name, diarize, durationSec, numSpeakers) => {
+  enqueue: (items) => {
+    if (!items.length) return;
+    set((s) => ({ queue: [...s.queue, ...items] }));
+    get().pump();
+  },
+
+  dequeue: (index) => {
+    set((s) => ({ queue: s.queue.filter((_, i) => i !== index) }));
+  },
+
+  pump: () => {
+    const s = get();
+    // одна тяжёлая расшифровка за раз
+    if (s.jobs.some((j) => j.status === "running") || s.queue.length === 0) return;
+
+    const [item, ...rest] = s.queue;
+    set({ queue: rest });
+
     const id = `job_${Date.now()}_${counter++}`;
     const createdAt = Date.now();
     const job: Job = {
       id,
-      name,
-      path,
-      diarize,
+      name: item.name,
+      path: item.path,
+      diarize: item.diarize,
       status: "running",
       stage: "decoding",
       done: 0,
       total: 0,
       partial: "",
       names: {},
-      durationSec,
+      durationSec: item.durationSec,
       startedAt: createdAt,
       stageStartedAt: createdAt,
     };
-    set((s) => ({ jobs: [job, ...s.jobs] }));
+    set((st) => ({ jobs: [job, ...st.jobs] }));
 
     const patch = (p: Partial<Job>) =>
-      set((s) => ({ jobs: s.jobs.map((j) => (j.id === id ? { ...j, ...p } : j)) }));
+      set((st) => ({ jobs: st.jobs.map((j) => (j.id === id ? { ...j, ...p } : j)) }));
 
     const channel = new Channel<Progress>();
     channel.onmessage = (p) => {
@@ -161,10 +195,11 @@ export const useJobs = create<JobsState>((set, get) => ({
         total: p.total,
         partial: p.partial,
         ...(cur && cur.stage !== p.stage ? { stageStartedAt: Date.now() } : {}),
+        ...(p.audioSec > 0 ? { durationSec: p.audioSec } : {}),
       });
     };
 
-    transcribe(path, diarize, id, channel, numSpeakers)
+    transcribe(item.path, item.diarize, id, channel, item.numSpeakers)
       .then((text) => {
         patch({ status: "done", text, partial: text, stage: "done" });
         const j = get().jobs.find((x) => x.id === id);
@@ -175,13 +210,65 @@ export const useJobs = create<JobsState>((set, get) => ({
         patch({ status: "error", error });
         const j = get().jobs.find((x) => x.id === id);
         if (j) saveJob(toStored({ ...j, status: "error", error })).catch(() => {});
+      })
+      .finally(() => {
+        // следующий из очереди
+        get().pump();
       });
-
-    return id;
   },
 
   cancel: (id) => {
     cancelTranscribe(id).catch(() => {});
+  },
+
+  retranscribe: (id) => {
+    const s = get();
+    if (s.jobs.some((j) => j.status === "running")) return; // занято — кнопка будет отключена
+    const job = s.jobs.find((j) => j.id === id);
+    if (!job) return;
+
+    const patch = (p: Partial<Job>) =>
+      set((st) => ({ jobs: st.jobs.map((j) => (j.id === id ? { ...j, ...p } : j)) }));
+
+    const startedAt = Date.now();
+    patch({
+      status: "running",
+      stage: "decoding",
+      done: 0,
+      total: 0,
+      partial: "",
+      text: undefined,
+      error: undefined,
+      startedAt,
+      stageStartedAt: startedAt,
+    });
+
+    const channel = new Channel<Progress>();
+    channel.onmessage = (p) => {
+      const cur = get().jobs.find((j) => j.id === id);
+      patch({
+        stage: p.stage,
+        done: p.done,
+        total: p.total,
+        partial: p.partial,
+        ...(cur && cur.stage !== p.stage ? { stageStartedAt: Date.now() } : {}),
+        ...(p.audioSec > 0 ? { durationSec: p.audioSec } : {}),
+      });
+    };
+
+    transcribe(job.path, job.diarize, id, channel)
+      .then((text) => {
+        patch({ status: "done", text, partial: text, stage: "done" });
+        const j = get().jobs.find((x) => x.id === id);
+        if (j) saveJob(toStored({ ...j, status: "done", text })).catch(() => {});
+      })
+      .catch((e) => {
+        const error = String(e);
+        patch({ status: "error", error });
+        const j = get().jobs.find((x) => x.id === id);
+        if (j) saveJob(toStored({ ...j, status: "error", error })).catch(() => {});
+      })
+      .finally(() => get().pump());
   },
 
   rename: (id, speaker, name) => {
@@ -194,6 +281,14 @@ export const useJobs = create<JobsState>((set, get) => ({
         return { ...j, names };
       }),
     }));
+    const j = get().jobs.find((x) => x.id === id);
+    if (j && j.status !== "running") saveJob(toStored(j)).catch(() => {});
+  },
+
+  renameJob: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((s) => ({ jobs: s.jobs.map((j) => (j.id === id ? { ...j, name: trimmed } : j)) }));
     const j = get().jobs.find((x) => x.id === id);
     if (j && j.status !== "running") saveJob(toStored(j)).catch(() => {});
   },

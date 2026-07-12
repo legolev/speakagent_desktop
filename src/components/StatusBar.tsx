@@ -64,6 +64,7 @@ export default function StatusBar() {
         {sys && (
           <span>
             {sys.physicalCores} ядер · {sys.ramTotalGb.toFixed(0)} ГБ ОЗУ
+            {sys.gpuName ? ` · ${sys.gpuName}` : ""}
           </span>
         )}
       </div>
