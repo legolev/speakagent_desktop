@@ -1,0 +1,52 @@
+[package]
+name = "speakagent"
+version = "0.1.0"
+description = "SpeakAgent Desktop — offline transcription & diarization"
+authors = ["SpeakAgent"]
+edition = "2021"
+license-file = "../LICENSE.md"
+repository = "https://github.com/legolev/speakagent_desktop"
+readme = "../README.md"
+
+[lib]
+name = "speakagent_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "macos-private-api"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Движок ASR + диаризация + VAD (официальный биндинг sherpa-onnx; download-binaries = prebuilt, без сборки C++)
+# ≥1.13.4: фикс не-ASCII путей на Windows (кириллическое имя пользователя ломало загрузку моделей)
+sherpa-onnx = "1.13.4"
+# Декод аудио/видео → PCM (pure-Rust). mp3/aac/mp4/flac/wav/ogg.
+symphonia = { version = "0.5", features = ["aac", "isomp4", "mp3", "flac", "wav", "ogg", "vorbis", "pcm"] }
+# Локальное хранилище истории (SQLite, компилится из исходников — bundled)
+rusqlite = { version = "0.32", features = ["bundled"] }
+dirs = "5"
+# Менеджер моделей: загрузка (HTTP) + распаковка tar.bz2 / tar.gz / zip
+ureq = "2"
+tar = "0.4"
+bzip2 = "0.4"
+flate2 = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# Генерация PDF со встроенным шрифтом (кириллица)
+genpdf = "0.2"
+# Детект железа и нагрузки (ядра, RAM, CPU%)
+sysinfo = "0.32"
+# Восстановление пунктуации/регистра (RUPunct): чистый-Rust ONNX-рантайм tract —
+# НЕ линкует onnxruntime (у sherpa свой, статический) → без второй DLL и без cmake.
+tract-onnx = "0.21"
+# Токенизатор WordPiece для модели пунктуации. Без onig/esaxx (C/C++); fancy-regex — чистый Rust.
+tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+window-vibrancy = "0.5"
+
+[target.'cfg(windows)'.dependencies]
+# Детект GPU (DXGI): выбор Vulkan-ускорения для «Итогов». Уже в дереве зависимостей Tauri.
+windows = { version = "0.61", features = ["Win32_Graphics_Dxgi", "Win32_Foundation"] }

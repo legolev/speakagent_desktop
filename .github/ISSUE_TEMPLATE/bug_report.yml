@@ -1,0 +1,58 @@
+name: 🐞 Баг / Bug report
+description: Сообщить об ошибке в приложении / Report a problem
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Что произошло / What happened
+      description: Опишите проблему и что вы ожидали. / Describe the bug and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения / Steps to reproduce
+      placeholder: |
+        1. Открыл файл …
+        2. Нажал …
+        3. Ошибка …
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: ОС и версия / OS and version
+      placeholder: "Windows 11 26200"
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Железо / Hardware (CPU, RAM, GPU/VRAM)
+      placeholder: "Ryzen 5 5600, 16 ГБ, без дискретной GPU"
+  - type: input
+    id: model
+    attributes:
+      label: Модель / тир / Model & tier
+      placeholder: "GigaAM v3 (RU) + Qwen3-4B"
+  - type: input
+    id: media
+    attributes:
+      label: Формат и длительность записи / Media format & length
+      placeholder: "mp3, 42 мин"
+  - type: dropdown
+    id: headless
+    attributes:
+      label: Воспроизводится ли в headless-примере? / Reproduces in the headless example?
+      description: "`cargo run --example try_transcribe -- <file>`"
+      options:
+        - "Не проверял / Not checked"
+        - "Да, воспроизводится / Yes"
+        - "Нет, только в приложении / No, only in the app"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи / Logs
+      description: Приложите вывод консоли или сообщение об ошибке. / Paste console output or the error.
+      render: shell

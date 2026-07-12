@@ -1,0 +1,65 @@
+# ── Node / UI ─────────────────────────────
+node_modules/
+ui/dist/
+dist/
+*.log
+.vite/
+
+# ── Rust / Tauri ──────────────────────────
+target/
+**/target/
+Cargo.lock.orig
+
+# ── Python spike ──────────────────────────
+.venv/
+.venv*/
+__pycache__/
+*.pyc
+.python-version
+
+# ── Models & downloaded weights (large, never commit) ──
+spike/models/
+resources/models/
+src-tauri/resources/models/
+*.onnx
+*.onnx.data
+*.tar.bz2
+*.tar.gz
+*.bin
+*.gguf
+!**/.gitkeep
+
+# ── Bundled binaries (ffmpeg) — downloaded, not committed ──
+resources/bin/
+resources/*.zip
+
+# ── App data / test artifacts ─────────────
+spike/out/
+*.wav
+*.tmp
+
+# ── Secrets / keys (defensive — none tracked; never commit) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+
+# ── OS / editor ───────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Mobile icons (desktop-only)
+src-tauri/icons/android/
+src-tauri/icons/ios/
+
+# ── Local-only dev docs (kept on disk, out of the public repo) ──
+/CLAUDE.md
+/docs/

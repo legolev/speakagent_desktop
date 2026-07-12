@@ -1,0 +1,7 @@
+# Фаза 0 — спайк валидации ядра. Ставится как готовые wheels, без Rust/C++/ffmpeg.
+sherpa-onnx        # C++/ONNX движок ASR + диаризации (prebuilt wheel)
+av                 # PyAV — декод любого аудио/видео в PCM (bundles ffmpeg, системный не нужен)
+numpy
+psutil             # замер RAM
+requests           # загрузка моделей
+tqdm               # прогресс загрузки
