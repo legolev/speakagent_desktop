@@ -93,6 +93,39 @@ export default function TranscribePage() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [confirmRetranscribe, setConfirmRetranscribe] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Модалка подтверждения удаления — работает и из таблицы, и из детального экрана.
+  const deleteModal = confirmDelete && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+      <div className="glass w-full max-w-md rounded-2xl border border-white/10 p-6">
+        <div className="text-lg font-semibold text-zinc-100">Удалить запись?</div>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          Расшифровка и составленные по ней итоги будут удалены безвозвратно. Сам файл на
+          диске не трогаем.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={() => setConfirmDelete(null)}
+            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={() => {
+              const id = confirmDelete;
+              setConfirmDelete(null);
+              if (selectedId === id) setSelectedId(null);
+              remove(id);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400"
+          >
+            <Trash2 size={15} /> Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const { data: sys } = useQuery({
     queryKey: ["systemInfo"],
@@ -228,10 +261,7 @@ export default function TranscribePage() {
             <ExportMenu name={selected.name} text={text} names={selected.names} />
           )}
           <button
-            onClick={() => {
-              remove(selected.id);
-              setSelectedId(null);
-            }}
+            onClick={() => setConfirmDelete(selected.id)}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:bg-white/5 hover:text-red-400"
           >
             <Trash2 size={13} /> Удалить
@@ -286,6 +316,7 @@ export default function TranscribePage() {
             </div>
           </div>
         )}
+        {deleteModal}
       </div>
     );
   }
@@ -293,6 +324,7 @@ export default function TranscribePage() {
   // ─── Хаб: управление + очередь + таблица истории ───
   return (
     <div className="mx-auto w-full max-w-6xl p-6 lg:p-8">
+      {deleteModal}
       <h1 className="text-2xl font-semibold tracking-tight">Расшифровка</h1>
       <p className="mt-1 text-sm text-zinc-400">
         Выберите или перетащите одну или несколько записей — они встанут в очередь. Ниже —
@@ -471,7 +503,7 @@ export default function TranscribePage() {
                     <Copy size={13} />
                   </button>
                   <button
-                    onClick={() => remove(j.id)}
+                    onClick={() => setConfirmDelete(j.id)}
                     className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/10 hover:text-red-400"
                     title="Удалить"
                   >
