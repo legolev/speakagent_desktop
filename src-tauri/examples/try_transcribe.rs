@@ -61,14 +61,15 @@ fn main() {
     let threshold: f32 = args.get(5).and_then(|s| s.parse().ok()).unwrap_or(0.8);
 
     // dev-фолбэк: модели спайка в spike/models рядом с src-tauri (или задать SA_MODEL_DIR).
-    let base = concat!(env!("CARGO_MANIFEST_DIR"), r"\..\spike\models");
-    let model = format!(r"{base}\sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19\model.int8.onnx");
-    let tokens = format!(r"{base}\sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19\tokens.txt");
+    // Прямые слэши — кроссплатформенно (Windows их тоже принимает).
+    let base = concat!(env!("CARGO_MANIFEST_DIR"), "/../spike/models");
+    let model = format!("{base}/sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19/model.int8.onnx");
+    let tokens = format!("{base}/sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19/tokens.txt");
     // Диаризация и VAD — через резолверы моделей (каталог данных → dev-фолбэк spike/models).
     let (seg, emb) = models::diarization().unwrap_or_else(|| {
         (
-            format!(r"{base}\sherpa-onnx-pyannote-segmentation-3-0\model.onnx"),
-            format!(r"{base}\3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx"),
+            format!("{base}/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"),
+            format!("{base}/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx"),
         )
     });
     let vad = models::vad();

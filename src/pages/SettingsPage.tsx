@@ -1,21 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import {
-  ShieldCheck,
-  Info,
-  Wand2,
-  FolderOpen,
-  Palette,
-  Languages,
-  Zap,
-  Cpu,
-} from "lucide-react";
-import { appInfo, openDataDir, systemInfo } from "../lib/api";
+import { ShieldCheck, Wand2, FolderOpen, Languages } from "lucide-react";
+import { openDataDir } from "../lib/api";
 import ModelSelector from "../components/ModelSelector";
-import LlmModelSelector from "../components/LlmModelSelector";
+import AiProvider from "../components/AiProvider";
 import { useUi } from "../store/ui";
 
 export default function SettingsPage() {
-  const { data } = useQuery({ queryKey: ["appInfo"], queryFn: appInfo });
   const openSetup = useUi((s) => s.openSetup);
 
   return (
@@ -47,20 +36,18 @@ export default function SettingsPage() {
       </div>
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Итоги встречи
+        ИИ-функции
       </h2>
       <p className="mt-1 text-sm text-zinc-400">
-        Саммари, протокол и задачи по записи составляет локальный помощник — полностью
-        офлайн. К выбранной модели один раз докачивается движок (~32 МБ).
+        Саммари, протокол и задачи по записи. Можно считать локально (полностью офлайн,
+        помощник докачивается один раз ~32 МБ) или через ваш облачный ИИ по токену.
       </p>
-      <AccelLine />
-      <LlmModelSelector />
+      <AiProvider />
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
         Скоро в обновлениях
       </h2>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Soon icon={Palette} title="Темы оформления" text="Светлая тема и акценты" />
         <Soon icon={Languages} title="Язык интерфейса" text="English и другие" />
       </div>
 
@@ -70,39 +57,11 @@ export default function SettingsPage() {
         </div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           Все записи обрабатываются только на этом компьютере и никуда не отправляются.
-          Интернет нужен лишь для первой загрузки моделей.
-        </p>
-      </div>
-
-      <div className="glass mt-4 rounded-xl border border-white/5 p-5">
-        <div className="flex items-center gap-2 font-medium">
-          <Info size={18} className="text-amber-500" /> О приложении
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          SpeakAgent для настольных систем · версия {data?.version ?? "…"}
+          Интернет нужен лишь для первой загрузки моделей (и для облачного ИИ, если вы его
+          выбрали).
         </p>
       </div>
     </div>
-  );
-}
-
-/** Чем считаются «Итоги» на этой машине — видеокартой или процессором. */
-function AccelLine() {
-  const { data: sys } = useQuery({
-    queryKey: ["systemInfo"],
-    queryFn: systemInfo,
-    staleTime: 60_000,
-  });
-  if (!sys) return null;
-  return sys.llmAccel === "gpu" ? (
-    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-emerald-400/90">
-      <Zap size={13} /> Итоги ускоряются видеокартой ({sys.gpuName})
-    </p>
-  ) : (
-    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-500">
-      <Cpu size={13} /> Итоги считаются на процессоре
-      {sys.gpuName ? ` (${sys.gpuName} не подходит для ускорения)` : ""}
-    </p>
   );
 }
 

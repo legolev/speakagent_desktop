@@ -85,8 +85,94 @@ Fully offline protocols / summaries / to-do lists from transcripts.
 - **slice 4** — auto-title after the first generated artifact (server is warm → seconds),
   honest slow-PC hints, docs.
 
+## Phase 2 — macOS (Apple Silicon)
+
+Brought the app up on Apple Silicon. The whole native stack compiles and links against the
+**system toolchain** (Apple clang / current macOS SDK) — the "single self-contained binary,
+no side dylibs" property holds (`otool -L` shows only `/usr/lib/libc++`).
+
+**Verified end-to-end (headless + full app):**
+- decode (symphonia) → **GigaAM v3 RU** ASR with punctuation/case → **diarization** →
+  replica assignment; **PDF** with the embedded Cyrillic font.
+- «Итоги встречи» on **Metal** — `llama-server` sidecar; `should_offload()` auto-detects the
+  Apple-Silicon accelerator (`--list-devices` → `MTL0`), generation runs on GPU.
+- Full `.app` launches with native **vibrancy**, models resolve from the bundled
+  `Contents/Resources/models`, hardware + GPU acceleration shown in the UI.
+
+**Fixes found on macOS:**
+- **AAC decode (cross-platform, high-impact).** symphonia's AAC decoder returns
+  plausible-but-wrong samples for many `.mp4`/`.m4a` files (it doesn't error → the ffmpeg
+  fallback never fired) → garbled transcription. Diagnosed on a real file: same clip, symphonia
+  → gibberish, ffmpeg → clean; isolated to the AAC decoder (resampler is fine). Fix: `decode.rs`
+  now routes AAC containers (`mp4/m4a/m4v/aac/mov/3gp`) through **ffmpeg** first, symphonia kept
+  as fallback. Affects the most common phone/screen-recording format (iPhone memos are m4a/AAC).
+- **Whisper produced empty output (cross-platform).** sherpa returns whisper text with
+  `timestamps = Some(empty)`; `decode_segment` took the timestamped branch and `push_words`
+  zipped tokens against zero timestamps → every word dropped. Now falls back to the segment
+  text when timestamps are empty (diarization coarsens to VAD-segment granularity, as expected
+  for whisper). Fixes both whisper-small and whisper-turbo.
+- llama macOS `tar.gz` extraction dropped the versioned dylib **symlinks** (`libX.0.dylib →
+  libX.0.0.NNNN.dylib`) → `dyld: Library not loaded @rpath/…`; symlinks are now recreated
+  (`engine/models.rs`). Windows was unaffected (flat `.dll`s).
+- `gpu::best_gpu()` returned `None` on macOS (no discrete adapters) → empty "()" in the Итоги
+  GPU label; now reports the Metal accelerator.
+- `MIN_VRAM_BYTES` gated to Windows (dead code on macOS); cross-platform slashes in the
+  `try_transcribe` dev fallback.
+
+**Models:**
+- Added **Whisper large-v3-turbo** to the catalog (sherpa `whisper-turbo`, ~540 MB) — a
+  noise/music-robust multilingual option (heavy/slow on CPU; for strong machines or hard audio).
+- **Per-model hardware-fit badge** in the model list — green/amber/red by the machine's
+  RAM + CPU vs the model's footprint and compute cost.
+
+**UI:**
+- **Player / transcript split into two panes** (matches the web cabinet): media player pinned
+  in a left column, tabs + scrolling transcript on the right (`ResultView`). Karaoke
+  click-to-seek preserved.
+- **Итоги format switches (Текст / Саммари / Протокол / Задачи) moved** from horizontal tabs to
+  a vertical button list under the player, in the left column.
+- **Расшифровка and История merged** into one hub: pick or drag **multiple** files (they form a
+  sequential **queue**), with the full transcript history as a table below. Removed the separate
+  История nav.
+- Clicking a history row opens the transcript as a **separate detail screen** with a Назад button
+  (no longer an inline accordion). History table gained a **duration** column (persisted in SQLite).
+- **«Расшифровать заново»** button under the player — re-runs the transcription of a saved
+  recording in place (e.g. to try another model).
+- Model-fit badges reworded (Хорошо подойдёт / Подойдёт / Тяжело для этого ПК) and now factor in
+  the **accelerator** (Apple Silicon / discrete GPU). The bottom status bar shows the GPU too.
+
+**AI (Итоги → «ИИ-функции»):**
+- Section renamed to **ИИ-функции**. Added a **cloud AI provider** option alongside the local
+  engine: OpenAI-compatible base URL (default OpenRouter), model (default `openai/gpt-4o-mini`),
+  and an API token (stored locally). When cloud is selected, summaries/protocols/to-dos are
+  generated via the provider (`engine/llm.rs::cloud_chat`, single call — no local map-reduce);
+  `is_ready`/backend routing updated. The token is the user's own and never leaves the machine
+  except to their chosen provider.
+- **«Проверить связь»** button in the cloud form — runs a tiny request (`test_cloud`) and reports
+  success (model reply) or a readable error (bad token / model / URL).
+
+**Polish (feedback round):**
+- The transcription now records the **real audio duration** on the backend (from the decoded
+  sample count) and shows it in the history table's duration column — reliable regardless of the
+  file format. The audio/video file is never copied: only its path is stored.
+- Weak-hardware warning is now based on the machine's **total** RAM (`< 8 GB`), not the momentary
+  free memory (which macOS routinely under-reports) — no more false "low memory" alarm.
+- Reworded the local-engine acceleration line; dropped the "Темы оформления" roadmap card.
+- New **«О приложении»** page (own nav entry): version, source repo (opens in the browser via
+  `open_url`), license, hardware/accelerator, and a live component-status panel — plus a small
+  easter egg.
+- History table gained **search by name**; a recording can be **renamed** in-app (click the title
+  in the detail header) and its **file path is shown and clickable** — reveals the original file
+  in Finder/Explorer (`reveal_file`, never a copy — only the path is stored).
+
+**Packaging & CI:**
+- `bundle.macOS.minimumSystemVersion` `11.0` + `bundle.category` productivity;
+  `pnpm tauri build` produces a working **`.app` + `.dmg`** (aarch64).
+- CI matrix extended to `macos-latest` (+ `windows-latest`) with a `fetch-models` step
+  (tauri-build validates `bundle.resources` on every `cargo check`).
+
 ## Next
 
-Phase 2 (macOS + GPU) — most groundwork done (per-OS catalog, tool_exe, exec-bit). Deferred
-items (auto-update, code signing, batch processing, repo polish before open-sourcing) are
-tracked separately.
+Deferred: **code signing + notarization** (needs an Apple Developer account) for distribution
+beyond a local machine; Intel/universal binary (arm64-only ships today); auto-update, batch
+processing.

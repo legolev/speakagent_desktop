@@ -117,9 +117,95 @@ pub struct GenOutput {
     pub digest: Option<String>,
 }
 
-/// Готова ли фича: установлен движок + активная LLM-модель.
+/// Готова ли фича: облако с токеном ИЛИ локальный движок + активная модель.
 pub fn is_ready() -> bool {
-    models::llm_files().is_some()
+    cloud_config().is_some() || models::llm_files().is_some()
+}
+
+/// Настройки облачного ИИ-провайдера, если он выбран и токен задан.
+/// Возвращает (base_url, model, api_key). URL/модель — с дефолтами (OpenRouter / gpt-4o-mini).
+pub fn cloud_config() -> Option<(String, String, String)> {
+    use crate::engine::store::get_setting;
+    if get_setting("llm_backend").as_deref() != Some("cloud") {
+        return None;
+    }
+    let key = get_setting("cloud_key").filter(|k| !k.trim().is_empty())?;
+    let url = get_setting("cloud_url")
+        .filter(|u| !u.trim().is_empty())
+        .unwrap_or_else(|| "https://openrouter.ai/api/v1".into());
+    let model = get_setting("cloud_model")
+        .filter(|m| !m.trim().is_empty())
+        .unwrap_or_else(|| "openai/gpt-4o-mini".into());
+    Some((url, model, key))
+}
+
+/// Проверка связи с облачным провайдером — мини-запрос. Ok(ответ) или понятная ошибка.
+pub fn cloud_test(url: &str, model: &str, key: &str) -> Result<String, String> {
+    if key.trim().is_empty() {
+        return Err("укажите токен".into());
+    }
+    let cancel = AtomicBool::new(false);
+    let reply = cloud_chat(
+        url,
+        model,
+        key,
+        "Ты проверяешь связь. Ответь коротко.",
+        "Ответь одним словом: ок",
+        8,
+        &cancel,
+    )?;
+    Ok(reply.trim().chars().take(40).collect())
+}
+
+/// Один запрос к облачному OpenAI-совместимому провайдеру (без стрима — облако быстрое).
+fn cloud_chat(
+    base_url: &str,
+    model: &str,
+    key: &str,
+    system: &str,
+    user: &str,
+    max_tokens: u32,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
+    if cancel.load(Ordering::Relaxed) {
+        return Err(CANCELLED.into());
+    }
+    let endpoint = format!("{}/chat/completions", base_url.trim_end_matches('/'));
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.4,
+        "max_tokens": max_tokens,
+    });
+    let resp = ureq::post(&endpoint)
+        .set("Content-Type", "application/json")
+        .set("Authorization", &format!("Bearer {key}"))
+        .timeout(Duration::from_secs(180))
+        .send_string(&body.to_string());
+    let resp = match resp {
+        Ok(r) => r,
+        Err(ureq::Error::Status(code, r)) => {
+            let detail = r.into_string().unwrap_or_default();
+            let hint = match code {
+                401 | 403 => " — проверьте токен",
+                402 => " — недостаточно средств у провайдера",
+                404 => " — проверьте адрес или название модели",
+                _ => "",
+            };
+            return Err(format!("облачный провайдер: HTTP {code}{hint}. {}", truncate_chars(&detail, 300)));
+        }
+        Err(e) => return Err(format!("облачный провайдер: {e}")),
+    };
+    let raw = resp.into_string().map_err(|e| e.to_string())?;
+    let v: serde_json::Value = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    let text = v["choices"][0]["message"]["content"].as_str().unwrap_or("").to_string();
+    if text.trim().is_empty() {
+        return Err("облако вернуло пустой ответ".into());
+    }
+    Ok(clean_output(&text))
 }
 
 /// Сервер уже поднят (модель в памяти) — дешёвые доп. запросы вроде авто-названия.
@@ -419,6 +505,16 @@ pub fn generate(
     mut on: impl FnMut(Progress),
 ) -> Result<GenOutput, String> {
     on(Progress { stage: "starting", done: 0, total: 0, partial: String::new() });
+
+    // Облачный провайдер (если выбран): один запрос — контекст у облака большой,
+    // map-reduce не нужен; расшифровку слегка ограничиваем, чтобы не раздувать стоимость.
+    if let Some((url, model, key)) = cloud_config() {
+        on(Progress { stage: "writing", done: 0, total: 0, partial: String::new() });
+        let input = truncate_chars(transcript, 240_000);
+        let text = cloud_chat(&url, &model, &key, kind.prompt(), &input, kind.max_tokens() + 512, cancel)?;
+        return Ok(GenOutput { text, digest: None });
+    }
+
     let port = ensure_server()?;
     let limit = single_pass_limit(kind);
 

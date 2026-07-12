@@ -14,7 +14,7 @@
 
 <p>
 <img src="https://img.shields.io/badge/Windows-10%2F11-0a0a0b?style=flat&logo=windows11&logoColor=fbbf24" alt="Windows 10/11">
-<img src="https://img.shields.io/badge/macOS-скоро-52525b?style=flat&logo=apple&logoColor=white" alt="macOS скоро">
+<img src="https://img.shields.io/badge/macOS-Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Apple Silicon">
 <img src="https://img.shields.io/badge/100%25-офлайн-16a34a?style=flat" alt="100% офлайн">
 <img src="https://img.shields.io/badge/лицензия-PolyForm%20NC%201.0.0-f59e0b?style=flat" alt="Лицензия PolyForm NC">
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
@@ -172,7 +172,7 @@ cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|
 | 0 | Валидация ядра (sherpa-onnx) на реальных файлах | ✅ Готово |
 | 1 | Windows MVP: транскрипция + диаризация, модели, экспорт, история, плеер | ✅ Готово |
 | 3 | «Итоги встречи» — протоколы/саммари/задачи через локальную LLM | ✅ Готово |
-| 2 | macOS (Apple Silicon) + GPU-ускорение | 🔜 Следующая (частично начата) |
+| 2 | macOS (Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Готово |
 | 4 | Монетизация / лицензирование, авто-обновление, подпись кода | ⬜ Планы |
 
 Историю изменений см. в [`CHANGELOG.md`](CHANGELOG.md).

@@ -7,15 +7,86 @@ import {
   activeModel,
   setActiveModel,
   downloadModel,
+  systemInfo,
   type ModelInfo,
+  type SystemInfo,
   type DlProgress,
 } from "../lib/api";
+
+/** Насколько модель подходит под железо этого компьютера. */
+type Fit = "good" | "ok" | "heavy";
+
+/** Оценка пригодности модели: память (модель в RAM + запас), тяжесть на CPU и общий
+ *  класс машины. Наличие ускорителя (Apple Silicon / дискретная видеокарта) считаем
+ *  признаком сильной машины — тяжёлые модели на ней комфортнее. */
+function modelFit(m: ModelInfo, sys: SystemInfo): { level: Fit; note: string } {
+  // Сколько примерно занимает в памяти (ГБ) — по факту распаковки, не по размеру архива.
+  const ramNeedGb: Record<string, number> = {
+    gigaam: 0.7,
+    parakeet: 1.3,
+    "whisper-small": 1.3,
+    "whisper-turbo": 2.6,
+  };
+  const need = ramNeedGb[m.id] ?? Math.max(0.7, m.sizeMb / 1024);
+
+  // Не хватает памяти под модель + рабочий запас → тяжело при любом раскладе.
+  if (sys.ramTotalGb < need + 1.5) {
+    return { level: "heavy", note: "мало оперативной памяти" };
+  }
+
+  // Сильная машина: есть ускоритель (GPU/Apple Silicon) ИЛИ быстрый многоядерный CPU.
+  const strong =
+    sys.llmAccel === "gpu" || !!sys.gpuName || (sys.physicalCores >= 8 && sys.speed !== "slow");
+
+  if (m.id === "whisper-turbo") {
+    // large-v3-turbo тяжёлый: на сильной машине приемлемо, на слабой — очень медленно.
+    return strong
+      ? { level: "ok", note: "самая точная, но помедленнее" }
+      : { level: "heavy", note: "очень медленно на этом процессоре" };
+  }
+  if (m.id === "whisper-small" || m.id === "parakeet") {
+    if (sys.speed === "slow" && !strong) return { level: "heavy", note: "будет медленно" };
+    return strong ? { level: "good", note: "" } : { level: "ok", note: "чуть медленнее" };
+  }
+  // GigaAM — лёгкая CTC-модель, идёт почти на любом железе.
+  return { level: "good", note: "" };
+}
+
+const FIT_UI: Record<Fit, { dot: string; label: string; text: string }> = {
+  good: { dot: "bg-emerald-500", label: "Хорошо подойдёт", text: "text-emerald-400/90" },
+  ok: { dot: "bg-amber-500", label: "Подойдёт", text: "text-amber-400/90" },
+  heavy: { dot: "bg-red-500", label: "Тяжело для этого ПК", text: "text-red-400/90" },
+};
+
+function FitBadge({ m, sys }: { m: ModelInfo; sys?: SystemInfo }) {
+  if (!sys) return null;
+  const { level, note } = modelFit(m, sys);
+  const ui = FIT_UI[level];
+  const hw = `${sys.physicalCores} ядер, ${sys.ramTotalGb.toFixed(0)} ГБ ОЗУ${
+    sys.gpuName ? `, ${sys.gpuName}` : ""
+  }`;
+  return (
+    <span
+      className={`mt-1 inline-flex items-center gap-1.5 text-[11px] ${ui.text}`}
+      title={`Оценка по вашему железу: ${hw}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} />
+      {ui.label}
+      {note && <span className="text-zinc-500">· {note}</span>}
+    </span>
+  );
+}
 
 export default function ModelSelector() {
   const { data: models, refetch } = useQuery({ queryKey: ["models"], queryFn: listModels });
   const { data: active, refetch: refetchActive } = useQuery({
     queryKey: ["activeModel"],
     queryFn: activeModel,
+  });
+  const { data: sys } = useQuery({
+    queryKey: ["systemInfo"],
+    queryFn: systemInfo,
+    staleTime: 60_000,
   });
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [error, setError] = useState<Record<string, string>>({});
@@ -77,6 +148,7 @@ export default function ModelSelector() {
               <span className="block text-xs text-zinc-500">
                 {m.lang} · {m.sizeMb} МБ{!m.installed && " · не скачана"}
               </span>
+              <FitBadge m={m} sys={sys} />
               {error[m.id] && <span className="block text-xs text-red-400">{error[m.id]}</span>}
             </span>
 

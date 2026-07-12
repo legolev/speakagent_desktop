@@ -34,6 +34,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "public.app-category.productivity",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -45,6 +46,9 @@
       "resources/models/silero_vad.onnx": "models/silero_vad.onnx",
       "resources/models/sherpa-onnx-pyannote-segmentation-3-0/": "models/sherpa-onnx-pyannote-segmentation-3-0/",
       "resources/models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx": "models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
     }
   }
 }

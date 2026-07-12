@@ -18,6 +18,8 @@ pub struct StoredJob {
     pub error: String,
     pub created_at: i64,
     pub speakers: String, // JSON {номер: имя}
+    #[serde(default)]
+    pub duration_sec: Option<f64>, // длительность записи, сек (для столбца в истории)
 }
 
 /// Единый корень данных приложения.
@@ -40,13 +42,15 @@ fn conn() -> Result<Connection, String> {
             text TEXT NOT NULL,
             error TEXT NOT NULL,
             created_at INTEGER NOT NULL,
-            speakers TEXT NOT NULL DEFAULT '{}'
+            speakers TEXT NOT NULL DEFAULT '{}',
+            duration_sec REAL
         )",
         [],
     )
     .map_err(|e| e.to_string())?;
-    // Миграция для БД, созданных до появления колонки speakers (ошибку игнорируем).
+    // Миграции для БД, созданных до появления колонок (ошибку «колонка есть» игнорируем).
     let _ = c.execute("ALTER TABLE jobs ADD COLUMN speakers TEXT NOT NULL DEFAULT '{}'", []);
+    let _ = c.execute("ALTER TABLE jobs ADD COLUMN duration_sec REAL", []);
     c.execute(
         "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
         [],
@@ -88,10 +92,10 @@ pub fn set_setting(key: &str, value: &str) -> Result<(), String> {
 pub fn save(j: &StoredJob) -> Result<(), String> {
     conn()?
         .execute(
-            "INSERT OR REPLACE INTO jobs (id, name, path, diarize, status, text, error, created_at, speakers)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT OR REPLACE INTO jobs (id, name, path, diarize, status, text, error, created_at, speakers, duration_sec)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
-                j.id, j.name, j.path, j.diarize as i32, j.status, j.text, j.error, j.created_at, j.speakers
+                j.id, j.name, j.path, j.diarize as i32, j.status, j.text, j.error, j.created_at, j.speakers, j.duration_sec
             ],
         )
         .map(|_| ())
@@ -101,7 +105,7 @@ pub fn save(j: &StoredJob) -> Result<(), String> {
 pub fn list() -> Result<Vec<StoredJob>, String> {
     let c = conn()?;
     let mut stmt = c
-        .prepare("SELECT id, name, path, diarize, status, text, error, created_at, speakers FROM jobs ORDER BY created_at DESC")
+        .prepare("SELECT id, name, path, diarize, status, text, error, created_at, speakers, duration_sec FROM jobs ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| {
@@ -115,6 +119,7 @@ pub fn list() -> Result<Vec<StoredJob>, String> {
                 error: r.get(6)?,
                 created_at: r.get(7)?,
                 speakers: r.get(8)?,
+                duration_sec: r.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -124,7 +129,7 @@ pub fn list() -> Result<Vec<StoredJob>, String> {
 pub fn get(id: &str) -> Option<StoredJob> {
     let c = conn().ok()?;
     c.query_row(
-        "SELECT id, name, path, diarize, status, text, error, created_at, speakers FROM jobs WHERE id = ?1",
+        "SELECT id, name, path, diarize, status, text, error, created_at, speakers, duration_sec FROM jobs WHERE id = ?1",
         [id],
         |r| {
             Ok(StoredJob {
@@ -137,6 +142,7 @@ pub fn get(id: &str) -> Option<StoredJob> {
                 error: r.get(6)?,
                 created_at: r.get(7)?,
                 speakers: r.get(8)?,
+                duration_sec: r.get(9)?,
             })
         },
     )
@@ -234,6 +240,7 @@ mod tests {
             error: "".into(),
             created_at: 123,
             speakers: "{}".into(),
+            duration_sec: Some(42.0),
         };
         save(&j).unwrap();
         let found = list().unwrap().into_iter().find(|x| x.id == id).unwrap();
