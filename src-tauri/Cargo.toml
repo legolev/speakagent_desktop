@@ -42,8 +42,8 @@ sherpa-onnx = "1.13.4"
 # Декод аудио/видео → PCM (pure-Rust). mp3/aac/mp4/flac/wav/ogg.
 symphonia = { version = "0.5", features = ["aac", "isomp4", "mp3", "flac", "wav", "ogg", "vorbis", "pcm"] }
 # Локальное хранилище истории (SQLite, компилится из исходников — bundled)
-rusqlite = { version = "0.32", features = ["bundled"] }
-dirs = "5"
+rusqlite = { version = "0.40", features = ["bundled"] }
+dirs = "6"
 # Менеджер моделей: загрузка (HTTP) + распаковка tar.bz2 / tar.gz / zip
 ureq = "2"
 tar = "0.4"
@@ -58,7 +58,7 @@ sysinfo = "0.32"
 # НЕ линкует onnxruntime (у sherpa свой, статический) → без второй DLL и без cmake.
 tract-onnx = "0.21"
 # Токенизатор WordPiece для модели пунктуации. Без onig/esaxx (C/C++); fancy-regex — чистый Rust.
-tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 # Стабильный аппаратный ID машины (IOPlatformUUID / MachineGuid / machine-id) — для ID устройства.
 machine-uid = "0.5"
 
