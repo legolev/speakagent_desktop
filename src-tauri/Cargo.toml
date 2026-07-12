@@ -42,7 +42,7 @@ sherpa-onnx = "1.13.4"
 # Декод аудио/видео → PCM (pure-Rust). mp3/aac/mp4/flac/wav/ogg.
 symphonia = { version = "0.5", features = ["aac", "isomp4", "mp3", "flac", "wav", "ogg", "vorbis", "pcm"] }
 # Локальное хранилище истории (SQLite, компилится из исходников — bundled)
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 dirs = "5"
 # Менеджер моделей: загрузка (HTTP) + распаковка tar.bz2 / tar.gz / zip
 ureq = "2"
