@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { parseReplicas, speakerLabel, timeToSec } from "../lib/diarize";
+import { highlightText } from "../lib/highlight";
 
 interface Props {
   text: string;
@@ -7,6 +8,7 @@ interface Props {
   onRename?: (speaker: number, name: string) => void;
   activeIndex?: number; // karaoke: индекс подсвеченной реплики
   onSeek?: (sec: number) => void; // клик по реплике → перемотка плеера
+  query?: string; // подсветка совпадений при поиске по тексту
 }
 
 const COLOR = [
@@ -32,6 +34,7 @@ export default function DiarizeRenderer({
   onRename,
   activeIndex,
   onSeek,
+  query,
 }: Props) {
   const replicas = parseReplicas(text);
   const [editIdx, setEditIdx] = useState<number | null>(null);
@@ -39,7 +42,9 @@ export default function DiarizeRenderer({
 
   if (replicas.length === 0) {
     return (
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">{text}</div>
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
+        {highlightText(text, query)}
+      </div>
     );
   }
 
@@ -91,7 +96,7 @@ export default function DiarizeRenderer({
                 onSeek ? "cursor-pointer" : ""
               } ${i === activeIndex ? "ring-2 ring-amber-400/70" : ""}`}
             >
-              {r.text}
+              {highlightText(r.text, query)}
             </div>
           </div>
         );

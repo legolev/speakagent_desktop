@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 import AudioPlayer from "./AudioPlayer";
 import DiarizeRenderer from "./DiarizeRenderer";
 import { ArtifactPanel, TABS, KIND_TITLE, type Tab } from "./MeetingResults";
 import { parseReplicas, timeToSec } from "../lib/diarize";
+import { highlightText, countMatches } from "../lib/highlight";
 import { useJobs } from "../store/jobs";
 import type { ResultKind } from "../lib/api";
 
@@ -19,6 +20,8 @@ interface Props {
   jobId?: string;
   /** Имя записи (для файлов экспорта итогов). */
   name?: string;
+  /** Обработчик «Расшифровать заново» (родитель показывает подтверждение и уводит на хаб). */
+  onRetranscribe?: () => void;
 }
 
 export default function ResultView({
@@ -30,15 +33,18 @@ export default function ResultView({
   withPlayer = false,
   jobId,
   name,
+  onRetranscribe,
 }: Props) {
   const [time, setTime] = useState(0);
   const seekRef = useRef<((sec: number) => void) | null>(null);
   const [tab, setTab] = useState<Tab>("text");
   const [protoStyle, setProtoStyle] = useState<"business" | "interview">("business");
+  const [tq, setTq] = useState(""); // поиск по тексту транскрипта
 
   const hydrateResults = useJobs((s) => s.hydrateResults);
   const retranscribe = useJobs((s) => s.retranscribe);
   const busy = useJobs((s) => s.jobs.some((j) => j.status === "running"));
+  const matches = useMemo(() => countMatches(text, tq), [text, tq]);
   useEffect(() => {
     if (jobId) void hydrateResults(jobId);
   }, [jobId, hydrateResults]);
@@ -53,23 +59,45 @@ export default function ResultView({
     return idx;
   }, [starts, time]);
 
-  // Прокручиваемый транскрипт (реплики со спикерами или сплошной текст).
+  // Прокручиваемый транскрипт (реплики со спикерами или сплошной текст) + поиск по нему.
   const transcript = (
-    <div className="min-h-0 flex-1 overflow-y-auto p-4">
-      {diarize ? (
-        <DiarizeRenderer
-          text={text}
-          names={names}
-          onRename={onRename}
-          activeIndex={withPlayer ? activeIndex : undefined}
-          onSeek={withPlayer ? (sec) => seekRef.current?.(sec) : undefined}
-        />
-      ) : (
-        <div className="select-text whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
-          {text || "(речь не распознана)"}
+    <>
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-2">
+        <div className="relative flex-1">
+          <Search
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
+          <input
+            value={tq}
+            onChange={(e) => setTq(e.target.value)}
+            placeholder="Поиск по тексту расшифровки…"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-amber-500/50"
+          />
         </div>
-      )}
-    </div>
+        {tq.trim() && (
+          <span className="shrink-0 text-xs text-zinc-500">
+            {matches > 0 ? `совпадений: ${matches}` : "не найдено"}
+          </span>
+        )}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {diarize ? (
+          <DiarizeRenderer
+            text={text}
+            names={names}
+            onRename={onRename}
+            activeIndex={withPlayer ? activeIndex : undefined}
+            onSeek={withPlayer ? (sec) => seekRef.current?.(sec) : undefined}
+            query={tq}
+          />
+        ) : (
+          <div className="select-text whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
+            {text ? highlightText(text, tq) : "(речь не распознана)"}
+          </div>
+        )}
+      </div>
+    </>
   );
 
   // Правая область: транскрипт («Текст») либо артефакт «Итогов» выбранного формата.
@@ -125,7 +153,7 @@ export default function ResultView({
         </div>
         {jobId && (
           <button
-            onClick={() => retranscribe(jobId)}
+            onClick={() => (onRetranscribe ? onRetranscribe() : retranscribe(jobId))}
             disabled={busy}
             title="Распознать эту запись заново (например, другой моделью)"
             className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20 disabled:cursor-default disabled:opacity-40"

@@ -83,6 +83,7 @@ export default function TranscribePage() {
   const remove = useJobs((s) => s.remove);
   const rename = useJobs((s) => s.rename);
   const renameJob = useJobs((s) => s.renameJob);
+  const retranscribe = useJobs((s) => s.retranscribe);
 
   const [diarize, setDiarize] = useState(true);
   const [speakers, setSpeakers] = useState(0); // 0 — авто
@@ -91,6 +92,7 @@ export default function TranscribePage() {
   const [search, setSearch] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [confirmRetranscribe, setConfirmRetranscribe] = useState<string | null>(null);
 
   const { data: sys } = useQuery({
     queryKey: ["systemInfo"],
@@ -248,9 +250,42 @@ export default function TranscribePage() {
               withPlayer={selected.status === "done"}
               jobId={selected.status === "done" ? selected.id : undefined}
               name={selected.name}
+              onRetranscribe={() => setConfirmRetranscribe(selected.id)}
             />
           )}
         </div>
+
+        {/* Подтверждение повторной расшифровки */}
+        {confirmRetranscribe && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="glass w-full max-w-md rounded-2xl border border-white/10 p-6">
+              <div className="text-lg font-semibold text-zinc-100">Расшифровать заново?</div>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                Текущий результат для этой записи будет перезаписан, а обработка может занять
+                время (зависит от длины записи и модели).
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmRetranscribe(null)}
+                  className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    const id = confirmRetranscribe;
+                    setConfirmRetranscribe(null);
+                    setSelectedId(null); // уходим на хаб — там виден прогресс в очереди
+                    retranscribe(id);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
+                >
+                  Да, заново
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

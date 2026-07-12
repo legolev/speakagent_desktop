@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { appInfo, systemInfo, isReady, llmReady, openUrl } from "../lib/api";
+import Diagnostics from "../components/Diagnostics";
 
 const REPO = "https://github.com/legolev/speakagent_desktop";
 
@@ -110,7 +111,17 @@ export default function AboutPage() {
         />
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-600">
+      {/* Диагностика и поддержка */}
+      <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
+        Диагностика и поддержка
+      </h2>
+      <p className="mt-1 text-sm text-zinc-400">
+        Уникальный ID этого компьютера и служебная информация — пригодятся, если нужно задать
+        вопрос или сообщить о проблеме.
+      </p>
+      <Diagnostics />
+
+      <p className="mt-8 text-center text-xs text-zinc-600">
         Сделано с ❤️ для тех, кому важна приватность записей.
       </p>
     </div>

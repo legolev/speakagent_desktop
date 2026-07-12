@@ -165,9 +165,12 @@ no side dylibs" property holds (`otool -L` shows only `/usr/lib/libc++`).
   **renamed** in-app (click the title in the detail header) and its **file path is shown and
   clickable** — reveals the original file in Finder/Explorer (`reveal_file`, never a copy — only
   the path is stored).
-- Settings → **«Диагностика и поддержка»**: a stable, immutable **device ID** (hardware machine-id
-  → FNV-1a fingerprint, raw UUID not exposed) and a collapsible **service-info** block — one click
-  to copy it or to open a **pre-filled GitHub issue** with the diagnostics attached.
+- **«Диагностика и поддержка»** (now on the «О приложении» page): a stable, immutable **device ID**
+  (hardware machine-id → FNV-1a fingerprint, raw UUID not exposed) and a collapsible **service-info**
+  block — one click to copy it or to open a **pre-filled GitHub issue** with the diagnostics attached.
+- Detail screen: a **search bar over the transcript** (highlights matches + count, works for both
+  diarized and plain text). **«Расшифровать заново»** now asks for confirmation and then returns to
+  the Расшифровка hub (where the re-run shows up in the queue) instead of staying on the file.
 
 **Packaging & CI:**
 - `bundle.macOS.minimumSystemVersion` `11.0` + `bundle.category` productivity;
