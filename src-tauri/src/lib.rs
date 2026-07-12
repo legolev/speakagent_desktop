@@ -1063,17 +1063,26 @@ fn finish_dictation(app: &AppHandle) {
 /// главного потока (enigo обращается к TSM/HIToolbox). На macOS нужен доступ Accessibility;
 /// без него вызов молча ничего не сделает (текст всё равно останется в буфере обмена).
 fn paste_to_cursor() {
-    use enigo::{Direction, Enigo, Key, Keyboard, Settings};
-    let Ok(mut enigo) = Enigo::new(&Settings::default()) else {
-        return;
-    };
-    #[cfg(target_os = "macos")]
-    let modifier = Key::Meta;
-    #[cfg(not(target_os = "macos"))]
-    let modifier = Key::Control;
-    let _ = enigo.key(modifier, Direction::Press);
-    let _ = enigo.key(Key::Unicode('v'), Direction::Click);
-    let _ = enigo.key(modifier, Direction::Release);
+    // Windows: честный VK-код через SendInput (enigo-Unicode не комбинируется с Ctrl).
+    #[cfg(target_os = "windows")]
+    {
+        keys::paste_ctrl_v();
+    }
+    // macOS: Cmd+V через enigo (Unicode+Meta тут работает). Требует Accessibility.
+    #[cfg(not(target_os = "windows"))]
+    {
+        use enigo::{Direction, Enigo, Key, Keyboard, Settings};
+        let Ok(mut enigo) = Enigo::new(&Settings::default()) else {
+            return;
+        };
+        #[cfg(target_os = "macos")]
+        let modifier = Key::Meta;
+        #[cfg(not(target_os = "macos"))]
+        let modifier = Key::Control;
+        let _ = enigo.key(modifier, Direction::Press);
+        let _ = enigo.key(Key::Unicode('v'), Direction::Click);
+        let _ = enigo.key(modifier, Direction::Release);
+    }
 }
 
 // ── Оверлей-индикатор записи ──

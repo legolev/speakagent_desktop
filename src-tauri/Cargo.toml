@@ -1,6 +1,6 @@
 [package]
 name = "speakagent"
-version = "0.1.1"
+version = "0.1.2"
 description = "SpeakAgent Desktop — offline transcription & diarization"
 authors = ["SpeakAgent"]
 edition = "2021"

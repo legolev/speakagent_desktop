@@ -25,6 +25,40 @@ pub fn listen<F: Fn(&str, bool) + Send + 'static>(cb: F) {
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn listen<F: Fn(&str, bool) + Send + 'static>(_cb: F) {}
 
+/// Windows: авто-вставка Ctrl+V через SendInput с ВИРТУАЛЬНЫМИ клавишами. `enigo` шлёт
+/// `Key::Unicode('v')` как `KEYEVENTF_UNICODE` — он не комбинируется с Ctrl (символ идёт
+/// мимо виртуальных клавиш), поэтому там Ctrl+V не срабатывает. Здесь — честный VK_V.
+#[cfg(target_os = "windows")]
+pub fn paste_ctrl_v() {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+        VIRTUAL_KEY, VK_CONTROL, VK_V,
+    };
+    fn ev(vk: VIRTUAL_KEY, up: bool) -> INPUT {
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        }
+    }
+    let inputs = [
+        ev(VK_CONTROL, false),
+        ev(VK_V, false),
+        ev(VK_V, true),
+        ev(VK_CONTROL, true),
+    ];
+    unsafe {
+        SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
 // ───────────────────────── macOS ─────────────────────────
 
 #[cfg(target_os = "macos")]
