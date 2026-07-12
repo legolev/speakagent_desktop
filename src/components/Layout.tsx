@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, FileAudio, Settings, Info } from "lucide-react";
+import { Home, FileAudio, Mic, Server, Settings, Info } from "lucide-react";
 import DragDropOverlay from "./DragDropOverlay";
 import StatusBar from "./StatusBar";
 
@@ -7,6 +7,8 @@ const NAV = [
   { to: "/", label: "Главная", icon: Home, end: true },
   // «Расшифровка» теперь объединена с историей: сверху очередь новых записей, ниже — все прошлые.
   { to: "/transcribe", label: "Расшифровка", icon: FileAudio, end: false },
+  { to: "/dictation", label: "Диктовка", icon: Mic, end: false },
+  { to: "/mcp", label: "MCP-сервер", icon: Server, end: false },
   { to: "/settings", label: "Настройки", icon: Settings, end: false },
   { to: "/about", label: "О приложении", icon: Info, end: false },
 ];

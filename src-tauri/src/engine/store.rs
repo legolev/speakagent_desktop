@@ -56,6 +56,19 @@ fn conn() -> Result<Connection, String> {
         [],
     )
     .map_err(|e| e.to_string())?;
+    // История быстрых распознаваний (диктовка push-to-talk).
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS dictations (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            duration_sec REAL,
+            model TEXT NOT NULL DEFAULT '',
+            lang TEXT NOT NULL DEFAULT ''
+        )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
     // «Итоги встречи»: N артефактов на запись (summary/business/interview/todo)
     // + служебный 'digest' (кэш map-reduce, в UI не показывается).
     c.execute(
@@ -223,6 +236,70 @@ pub fn digest_for(job_id: &str) -> Option<String> {
     .ok()
 }
 
+// ── Диктовка (быстрые распознавания) ──
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredDictation {
+    pub id: String,
+    pub text: String,
+    pub created_at: i64,
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub lang: String,
+}
+
+pub fn save_dictation(d: &StoredDictation) -> Result<(), String> {
+    conn()?
+        .execute(
+            "INSERT OR REPLACE INTO dictations (id, text, created_at, duration_sec, model, lang)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![d.id, d.text, d.created_at, d.duration_sec, d.model, d.lang],
+        )
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+pub fn list_dictations() -> Result<Vec<StoredDictation>, String> {
+    let c = conn()?;
+    let mut stmt = c
+        .prepare(
+            "SELECT id, text, created_at, duration_sec, model, lang
+             FROM dictations ORDER BY created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(StoredDictation {
+                id: r.get(0)?,
+                text: r.get(1)?,
+                created_at: r.get(2)?,
+                duration_sec: r.get(3)?,
+                model: r.get(4)?,
+                lang: r.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+pub fn delete_dictation(id: &str) -> Result<(), String> {
+    conn()?
+        .execute("DELETE FROM dictations WHERE id = ?1", [id])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+pub fn clear_dictations() -> Result<(), String> {
+    conn()?
+        .execute("DELETE FROM dictations", [])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +325,28 @@ mod tests {
         assert!(found.diarize);
         delete(&id).unwrap();
         assert!(list().unwrap().into_iter().all(|x| x.id != id));
+    }
+
+    #[test]
+    fn dictation_roundtrip() {
+        let id = "test_dict_selfcheck_5514".to_string();
+        let d = StoredDictation {
+            id: id.clone(),
+            text: "быстрая заметка".into(),
+            created_at: 456,
+            duration_sec: Some(3.5),
+            model: "gigaam".into(),
+            lang: "ru".into(),
+        };
+        save_dictation(&d).unwrap();
+        let found = list_dictations()
+            .unwrap()
+            .into_iter()
+            .find(|x| x.id == id)
+            .unwrap();
+        assert_eq!(found.text, "быстрая заметка");
+        assert_eq!(found.duration_sec, Some(3.5));
+        delete_dictation(&id).unwrap();
+        assert!(list_dictations().unwrap().into_iter().all(|x| x.id != id));
     }
 }

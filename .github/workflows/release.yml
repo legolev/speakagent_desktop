@@ -1,0 +1,71 @@
+name: Release
+
+# Как выпустить релиз:
+#   1) поднять "version" в src-tauri/tauri.conf.json и package.json (напр. 0.1.1)
+#   2) git commit && git tag v0.1.1 && git push origin v0.1.1
+# CI соберёт .dmg (macOS) и .exe (Windows), подпишет артефакты обновления и опубликует
+# GitHub Release + latest.json (по нему работает автообновление в приложении).
+#
+# Требуются секреты репозитория:
+#   TAURI_SIGNING_PRIVATE_KEY          — приватный ключ обновлений (см. README «Релизы»)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — пароль ключа (пустой, если ключ без пароля)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            args: "--target aarch64-apple-darwin"
+          - platform: windows-latest
+            target: ""
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      # tauri-action соберёт фронтенд+бэкенд (beforeBuildCommand скачает вшиваемые модели),
+      # подпишет артефакты обновления и создаст/дополнит GitHub Release + latest.json.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "SpeakAgent v__VERSION__"
+          releaseBody: |
+            Скачайте установщик для своей системы: **.dmg** (macOS Apple Silicon) или **.exe** (Windows).
+            Уже установленное приложение обновится само — «О приложении» → «Проверить».
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

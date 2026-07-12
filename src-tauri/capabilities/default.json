@@ -2,10 +2,13 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": ["main", "dict-overlay"],
   "permissions": [
     "core:default",
     "dialog:default",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "updater:default",
+    "process:default",
+    "process:allow-restart"
   ]
 }

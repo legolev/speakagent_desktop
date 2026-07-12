@@ -3,6 +3,33 @@
 All work to date. The project was built in one intensive session; entries are grouped by
 theme and reference the commit.
 
+## Диктовка, локальный MCP-сервер, трей и авто-обновление
+
+**Диктовка (push-to-talk, как superwhisper)** — новая вкладка «Диктовка». Глобальный слушатель
+клавиш `src-tauri/src/keys.rs` (**собственный CGEventTap на macOS / WH_KEYBOARD_LL на Windows** —
+работает глобально вне фокуса, ловит одиночные клавиши и модификаторы, напр. правый Shift; не
+падает и не пере-запрашивает доступ, в отличие от rdev/device_query). Захват микрофона `cpal`
+(тёплый ASR-воркер, `engine/dictation.rs`) → буфер обмена (`tauri-plugin-clipboard-manager`) +
+авто-вставка `enigo` (Cmd/Ctrl+V, эмуляция на главном потоке — иначе SIGTRAP от TSM) → история
+(SQLite `dictations`). Звуки старт/стоп (`rodio`, `engine/sound.rs`), плавающий оверлей записи
+вверху экрана, выбор устройства ввода, отдельная модель диктовки. Таблица разрешений macOS
+(Input Monitoring + Accessibility) с запросом: `permissions_status`/`request_permission`.
+
+**Локальный MCP-сервер** — новая вкладка «MCP-сервер». Streamable-HTTP MCP (JSON-RPC 2.0 на
+`axum`/`tokio`, `src-tauri/src/mcp.rs`) на `127.0.0.1:8722`, инструменты поверх `engine::*`:
+`status transcribe diarize protocol todo summarize list_jobs get_transcript`. UI со статусом,
+автозапуском, командой `claude mcp add …` и кнопками добавления в Cursor / VS Code / Claude Code /
+Codex. Тесты `mcp::tests::http_protocol_and_auth`.
+
+**Трей + сворачивание** (Tauri `tray-icon`): монохромная template-иконка (волна, как в доке),
+меню по левому клику (статус / показать окно / выход), закрытие окна → сворачивание в трей без
+остановки обработки и MCP.
+
+**Авто-обновление** (`tauri-plugin-updater` + `tauri-plugin-process`): «О приложении» →
+«Проверить» / тихая автопроверка → бесшовная установка подписанного релиза с GitHub. Релизы
+(`.dmg`/`.exe` + `latest.json`) собирает GitHub Actions (`.github/workflows/release.yml`,
+tauri-action, matrix macOS-arm64 + Windows) по тегу `v*`.
+
 ## Phase 0 — core validated (Python spike)
 
 Benchmarked the native ONNX engine on real audio before committing to the architecture

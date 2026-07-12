@@ -31,9 +31,18 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/legolev/speakagent_desktop/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVGNTQ3MzBDRUNBMjJBNUEKUldSYUtxTHNESE5VNy9Qc1NEL2FUL3pPK2lQTDVSZUVISWFSWHMvSmNDSjNka3VUOUxGMWkzUWEK"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "public.app-category.productivity",
     "icon": [
       "icons/32x32.png",

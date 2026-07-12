@@ -36,6 +36,7 @@ resources/*.zip
 # ── App data / test artifacts ─────────────
 spike/out/
 *.wav
+!src-tauri/src/engine/sounds/*.wav
 *.tmp
 
 # ── Secrets / keys (defensive — none tracked; never commit) ──

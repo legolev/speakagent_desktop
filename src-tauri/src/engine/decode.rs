@@ -128,7 +128,8 @@ fn decode_symphonia(path: &str, max_secs: Option<f32>) -> Result<Vec<f32>, Strin
     Ok(resample_linear(&mono, src_rate, TARGET_SR))
 }
 
-fn resample_linear(input: &[f32], from: u32, to: u32) -> Vec<f32> {
+/// Линейный ресемплинг (используется декодером файлов и захватом микрофона диктовки).
+pub fn resample_linear(input: &[f32], from: u32, to: u32) -> Vec<f32> {
     if from == to || input.is_empty() {
         return input.to_vec();
     }

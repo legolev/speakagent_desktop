@@ -190,6 +190,69 @@ export const setCloudConfig = (url: string, model: string, key: string) =>
 export const testCloud = (url: string, model: string, key: string) =>
   invoke<string>("test_cloud", { url, model, key });
 
+// ── Диктовка (push-to-talk) ──
+export interface StoredDictation {
+  id: string;
+  text: string;
+  createdAt: number;
+  durationSec?: number | null;
+  model: string;
+  lang: string;
+}
+
+export interface DictationConfig {
+  hotkey: string;
+  mode: "hold" | "toggle";
+  autopaste: boolean;
+  sound: boolean;
+  inputDevice: string; // "" — устройство по умолчанию
+  model: string; // "" — как активная ASR-модель
+  lang: string;
+}
+
+export const dictationConfig = () => invoke<DictationConfig>("dictation_config");
+export const setDictationConfig = (config: DictationConfig) =>
+  invoke<void>("set_dictation_config", { config });
+export const listInputDevices = () => invoke<string[]>("list_input_devices");
+export const dictationRecording = () => invoke<boolean>("dictation_recording");
+export const dictationStart = () => invoke<void>("dictation_start");
+export const dictationStop = () => invoke<void>("dictation_stop");
+export const listDictations = () => invoke<StoredDictation[]>("list_dictations");
+export const deleteDictation = (id: string) => invoke<void>("delete_dictation", { id });
+export const clearDictations = () => invoke<void>("clear_dictations");
+
+// Разрешения macOS (глобальная клавиша + авто-вставка).
+export interface PermissionsStatus {
+  needed: boolean;
+  accessibility: boolean;
+  inputMonitoring: boolean;
+}
+export const permissionsStatus = () => invoke<PermissionsStatus>("permissions_status");
+export const requestPermission = (kind: "accessibility" | "input-monitoring") =>
+  invoke<void>("request_permission", { kind });
+
+// ── Локальный MCP-сервер ──
+export interface McpStatus {
+  running: boolean;
+  port: number;
+  url: string;
+  autostart: boolean;
+  hasToken: boolean;
+  tools: string[];
+}
+export interface McpConfig {
+  enabled: boolean;
+  port: number;
+  token: string;
+  autostart: boolean;
+}
+export const mcpStatus = () => invoke<McpStatus>("mcp_status");
+export const mcpConfig = () => invoke<McpConfig>("mcp_config");
+export const mcpStart = () => invoke<McpStatus>("mcp_start");
+export const mcpStop = () => invoke<McpStatus>("mcp_stop");
+export const setMcpConfig = (config: McpConfig) =>
+  invoke<McpStatus>("set_mcp_config", { config });
+
 const MEDIA_EXTS = [
   "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "oga",
   "mp4", "mov", "mkv", "webm", "avi", "m4v", "ts",

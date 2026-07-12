@@ -66,6 +66,8 @@ interface JobsState {
   /** Итоги по записям: jobId → kind → состояние. Живёт в сторе — переживает навигацию. */
   results: Record<string, Partial<Record<ResultKind, ResultState>>>;
   hydrate: () => Promise<void>;
+  /** Подтянуть из SQLite записи, добавленные извне (диктовка/MCP), не трогая идущие. */
+  refresh: () => Promise<void>;
   /** Добавить записи в очередь (и запустить обработку, если простаивает). */
   enqueue: (items: QueueItem[]) => void;
   /** Запустить следующий элемент очереди, если сейчас ничего не обрабатывается. */
@@ -106,6 +108,32 @@ function toStored(j: Job): StoredJob {
   };
 }
 
+function storedToJob(s: StoredJob): Job {
+  let names: Record<number, string> = {};
+  try {
+    names = JSON.parse(s.speakers || "{}");
+  } catch {
+    /* ignore */
+  }
+  return {
+    id: s.id,
+    name: s.name,
+    path: s.path,
+    diarize: s.diarize,
+    status: s.status,
+    stage: "done",
+    done: 1,
+    total: 1,
+    partial: s.text,
+    text: s.status === "done" ? s.text : undefined,
+    error: s.status === "error" ? s.error : undefined,
+    names,
+    durationSec: s.durationSec ?? undefined,
+    startedAt: s.createdAt,
+    stageStartedAt: s.createdAt,
+  };
+}
+
 export const useJobs = create<JobsState>((set, get) => ({
   jobs: [],
   queue: [],
@@ -114,35 +142,24 @@ export const useJobs = create<JobsState>((set, get) => ({
   hydrate: async () => {
     try {
       const stored = await listJobs();
-      set({
-        jobs: stored.map((s) => {
-          let names: Record<number, string> = {};
-          try {
-            names = JSON.parse(s.speakers || "{}");
-          } catch {
-            /* ignore */
-          }
-          return {
-            id: s.id,
-            name: s.name,
-            path: s.path,
-            diarize: s.diarize,
-            status: s.status,
-            stage: "done",
-            done: 1,
-            total: 1,
-            partial: s.text,
-            text: s.status === "done" ? s.text : undefined,
-            error: s.status === "error" ? s.error : undefined,
-            names,
-            durationSec: s.durationSec ?? undefined,
-            startedAt: s.createdAt,
-            stageStartedAt: s.createdAt,
-          };
-        }),
-      });
+      set({ jobs: stored.map(storedToJob) });
     } catch {
       /* история недоступна — не критично */
+    }
+  },
+
+  refresh: async () => {
+    try {
+      const stored = await listJobs();
+      set((s) => {
+        // сохраняем идущие расшифровки (их ещё нет в БД), остальное берём из БД
+        const running = s.jobs.filter((j) => j.status === "running");
+        const runningIds = new Set(running.map((j) => j.id));
+        const fromDb = stored.filter((x) => !runningIds.has(x.id)).map(storedToJob);
+        return { jobs: [...running, ...fromDb] };
+      });
+    } catch {
+      /* не критично */
     }
   },
 

@@ -561,6 +561,29 @@ pub fn active_asr_files() -> Option<AsrFiles> {
     asr_files(&active_id()).or_else(|| asr_files("gigaam"))
 }
 
+// ── Модель диктовки (отдельная от общей ASR) ──
+
+/// Активная модель диктовки. Пусто/не задано → следуем за активной ASR-моделью.
+pub fn dict_asr_id() -> String {
+    crate::engine::store::get_setting("dict_asr")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(active_id)
+}
+
+pub fn set_dict_asr(id: &str) -> Result<(), String> {
+    // Пустая строка = «как активная ASR» (валидный выбор).
+    if id.is_empty() || find(id).map(|s| s.kind == "asr").unwrap_or(false) {
+        crate::engine::store::set_setting("dict_asr", id)
+    } else {
+        Err("не языковая модель".into())
+    }
+}
+
+/// Файлы модели диктовки (fallback: активная ASR → gigaam).
+pub fn dict_asr_files() -> Option<AsrFiles> {
+    asr_files(&dict_asr_id()).or_else(active_asr_files)
+}
+
 fn asr_files(id: &str) -> Option<AsrFiles> {
     match id {
         "gigaam" => {

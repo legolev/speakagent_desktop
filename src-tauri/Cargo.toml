@@ -16,10 +16,26 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset", "macos-private-api"] }
+tauri = { version = "2", features = ["protocol-asset", "macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-dialog = "2"
+# Авто-обновление: проверка/скачивание/установка релизов с GitHub + перезапуск.
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+# Диктовка: буфер обмена (вызываем из Rust).
+tauri-plugin-clipboard-manager = "2"
+# Диктовка: глобальный слушатель клавиш — собственный (src/keys.rs). macOS: CGEventTap
+# (см. target-зависимости ниже). Windows: WH_KEYBOARD_LL (крейт `windows`, фичи ниже).
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Диктовка: захват микрофона (WASAPI/CoreAudio, системные API, без C++).
+cpal = "0.15"
+# Диктовка: эмуляция Cmd/Ctrl+V для авто-вставки на активный курсор.
+enigo = "0.3"
+# Диктовка: короткие звуковые сигналы старт/стоп (pure-Rust, поверх cpal).
+rodio = { version = "0.19", default-features = false, features = ["wav"] }
+# Локальный MCP-сервер: HTTP (JSON-RPC поверх axum) на 127.0.0.1. Всё pure-Rust.
+axum = "0.7"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros"] }
 # Движок ASR + диаризация + VAD (официальный биндинг sherpa-onnx; download-binaries = prebuilt, без сборки C++)
 # ≥1.13.4: фикс не-ASCII путей на Windows (кириллическое имя пользователя ломало загрузку моделей)
 sherpa-onnx = "1.13.4"
@@ -49,6 +65,16 @@ machine-uid = "0.5"
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 window-vibrancy = "0.5"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Глобальный слушатель клавиш диктовки: CGEventTap + CFRunLoop. Системные фреймворки.
+core-graphics = "0.24"
+core-foundation = "0.10"
+
 [target.'cfg(windows)'.dependencies]
-# Детект GPU (DXGI): выбор Vulkan-ускорения для «Итогов». Уже в дереве зависимостей Tauri.
-windows = { version = "0.61", features = ["Win32_Graphics_Dxgi", "Win32_Foundation"] }
+# Детект GPU (DXGI) + низкоуровневый хук клавиатуры (WH_KEYBOARD_LL) для диктовки.
+windows = { version = "0.61", features = [
+    "Win32_Graphics_Dxgi",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }

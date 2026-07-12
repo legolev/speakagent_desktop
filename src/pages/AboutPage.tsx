@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Github,
@@ -8,8 +8,12 @@ import {
   HardDrive,
   Cpu,
   ExternalLink,
+  RefreshCw,
+  Loader2,
+  Download,
 } from "lucide-react";
 import { appInfo, systemInfo, isReady, llmReady, openUrl } from "../lib/api";
+import { checkUpdate, installUpdate, type Update } from "../lib/update";
 import Diagnostics from "../components/Diagnostics";
 
 const REPO = "https://github.com/legolev/speakagent_desktop";
@@ -25,6 +29,45 @@ export default function AboutPage() {
   const { data: llmR } = useQuery({ queryKey: ["llmReady"], queryFn: llmReady });
 
   const [eggs, setEggs] = useState(0);
+
+  // ── Обновления ──
+  const [upd, setUpd] = useState<Update | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [updErr, setUpdErr] = useState("");
+
+  async function doCheck(manual: boolean) {
+    setChecking(true);
+    setUpdErr("");
+    try {
+      setUpd(await checkUpdate());
+      setChecked(true);
+    } catch (e) {
+      if (manual) setUpdErr(String(e));
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  // Тихая автопроверка при открытии страницы.
+  useEffect(() => {
+    void doCheck(false);
+  }, []);
+
+  async function doInstall() {
+    if (!upd) return;
+    setDownloading(true);
+    setProgress(0);
+    setUpdErr("");
+    try {
+      await installUpdate(upd, setProgress); // внутри — перезапуск приложения
+    } catch (e) {
+      setUpdErr(String(e));
+      setDownloading(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl p-8">
@@ -46,9 +89,7 @@ export default function AboutPage() {
           <div className="text-sm text-zinc-400">
             Расшифровка и диаризация речи — офлайн, на вашем компьютере
           </div>
-          <div className="mt-1 text-xs text-zinc-500">
-            Версия {app?.version ?? "…"} · Apple Silicon · macOS
-          </div>
+          <div className="mt-1 text-xs text-zinc-500">Версия {app?.version ?? "…"}</div>
         </div>
       </div>
       {eggs >= 5 && (
@@ -57,6 +98,68 @@ export default function AboutPage() {
           выбираете приватность!
         </div>
       )}
+
+      {/* Обновления */}
+      <div className="glass mt-4 rounded-xl border border-white/5 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-zinc-200">Обновления</div>
+            <div className="text-xs text-zinc-500">
+              {checking
+                ? "Проверяю наличие обновлений…"
+                : upd
+                  ? `Доступна новая версия ${upd.version}`
+                  : checked
+                    ? "У вас последняя версия"
+                    : "Автоматическая проверка обновлений"}
+            </div>
+          </div>
+          {upd ? (
+            <button
+              onClick={doInstall}
+              disabled={downloading}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400 disabled:opacity-60"
+            >
+              {downloading ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" /> Загрузка {progress}%
+                </>
+              ) : (
+                <>
+                  <Download size={15} /> Обновить
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => doCheck(true)}
+              disabled={checking}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/5 disabled:opacity-60"
+            >
+              {checking ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <RefreshCw size={15} />
+              )}
+              Проверить
+            </button>
+          )}
+        </div>
+        {upd?.body && (
+          <p className="mt-3 whitespace-pre-line border-t border-white/5 pt-3 text-xs leading-relaxed text-zinc-400">
+            {upd.body}
+          </p>
+        )}
+        {downloading && (
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-amber-500 transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+        {updErr && <div className="mt-2 text-xs text-red-400">{updErr}</div>}
+      </div>
 
       {/* Полезное */}
       <div className="mt-4 grid gap-2 sm:grid-cols-2">

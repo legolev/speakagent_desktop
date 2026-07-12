@@ -84,6 +84,12 @@ export default function TranscribePage() {
   const rename = useJobs((s) => s.rename);
   const renameJob = useJobs((s) => s.renameJob);
   const retranscribe = useJobs((s) => s.retranscribe);
+  const refresh = useJobs((s) => s.refresh);
+
+  // Подтянуть записи, добавленные извне (диктовкой/MCP), при открытии страницы.
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const [diarize, setDiarize] = useState(true);
   const [speakers, setSpeakers] = useState(0); // 0 — авто
