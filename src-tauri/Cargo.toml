@@ -58,7 +58,7 @@ sysinfo = "0.32"
 # НЕ линкует onnxruntime (у sherpa свой, статический) → без второй DLL и без cmake.
 tract-onnx = "0.21"
 # Токенизатор WordPiece для модели пунктуации. Без onig/esaxx (C/C++); fancy-regex — чистый Rust.
-tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 # Стабильный аппаратный ID машины (IOPlatformUUID / MachineGuid / machine-id) — для ID устройства.
 machine-uid = "0.5"
 
