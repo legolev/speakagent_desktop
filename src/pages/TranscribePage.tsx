@@ -101,7 +101,13 @@ export default function TranscribePage() {
   const running = jobs.find((j) => j.status === "running");
   const allHistory = jobs.filter((j) => j.status !== "running");
   const q = search.trim().toLowerCase();
-  const history = q ? allHistory.filter((j) => j.name.toLowerCase().includes(q)) : allHistory;
+  const history = q
+    ? allHistory.filter(
+        (j) =>
+          j.name.toLowerCase().includes(q) ||
+          (j.text ?? j.partial ?? "").toLowerCase().includes(q),
+      )
+    : allHistory;
 
   // Секундомер для идущей записи.
   const [now, setNow] = useState(() => Date.now());
@@ -373,7 +379,7 @@ export default function TranscribePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по названию…"
+              placeholder="Поиск по названию и тексту…"
               className="w-56 rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-amber-500/50"
             />
           </div>

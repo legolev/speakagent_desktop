@@ -43,6 +43,8 @@ sysinfo = "0.32"
 tract-onnx = "0.21"
 # Токенизатор WordPiece для модели пунктуации. Без onig/esaxx (C/C++); fancy-regex — чистый Rust.
 tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
+# Стабильный аппаратный ID машины (IOPlatformUUID / MachineGuid / machine-id) — для ID устройства.
+machine-uid = "0.5"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 window-vibrancy = "0.5"

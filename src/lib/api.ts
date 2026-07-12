@@ -27,6 +27,10 @@ export const openDataDir = () => invoke<void>("open_data_dir");
 export const openUrl = (url: string) => invoke<void>("open_url", { url });
 /** Показать файл в системном менеджере (Finder/Explorer) с выделением. */
 export const revealFile = (path: string) => invoke<void>("reveal_file", { path });
+/** Стабильный неизменяемый ID этого устройства. */
+export const deviceId = () => invoke<string>("device_id");
+/** Служебная информация одним текстом (для баг-репорта). */
+export const diagnostics = () => invoke<string>("diagnostics");
 
 export interface SystemInfo {
   physicalCores: number;

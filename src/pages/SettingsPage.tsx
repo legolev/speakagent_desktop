@@ -2,6 +2,7 @@ import { ShieldCheck, Wand2, FolderOpen, Languages } from "lucide-react";
 import { openDataDir } from "../lib/api";
 import ModelSelector from "../components/ModelSelector";
 import AiProvider from "../components/AiProvider";
+import Diagnostics from "../components/Diagnostics";
 import { useUi } from "../store/ui";
 
 export default function SettingsPage() {
@@ -43,6 +44,15 @@ export default function SettingsPage() {
         помощник докачивается один раз ~32 МБ) или через ваш облачный ИИ по токену.
       </p>
       <AiProvider />
+
+      <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
+        Диагностика и поддержка
+      </h2>
+      <p className="mt-1 text-sm text-zinc-400">
+        Уникальный ID этого компьютера и служебная информация — пригодятся, если нужно задать
+        вопрос или сообщить о проблеме.
+      </p>
+      <Diagnostics />
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
         Скоро в обновлениях

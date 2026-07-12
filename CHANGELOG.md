@@ -161,9 +161,13 @@ no side dylibs" property holds (`otool -L` shows only `/usr/lib/libc++`).
 - New **«О приложении»** page (own nav entry): version, source repo (opens in the browser via
   `open_url`), license, hardware/accelerator, and a live component-status panel — plus a small
   easter egg.
-- History table gained **search by name**; a recording can be **renamed** in-app (click the title
-  in the detail header) and its **file path is shown and clickable** — reveals the original file
-  in Finder/Explorer (`reveal_file`, never a copy — only the path is stored).
+- History table gained **search** (by name **and transcript content**); a recording can be
+  **renamed** in-app (click the title in the detail header) and its **file path is shown and
+  clickable** — reveals the original file in Finder/Explorer (`reveal_file`, never a copy — only
+  the path is stored).
+- Settings → **«Диагностика и поддержка»**: a stable, immutable **device ID** (hardware machine-id
+  → FNV-1a fingerprint, raw UUID not exposed) and a collapsible **service-info** block — one click
+  to copy it or to open a **pre-filled GitHub issue** with the diagnostics attached.
 
 **Packaging & CI:**
 - `bundle.macOS.minimumSystemVersion` `11.0` + `bundle.category` productivity;

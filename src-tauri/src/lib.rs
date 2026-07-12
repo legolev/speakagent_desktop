@@ -654,6 +654,78 @@ async fn test_cloud(url: String, model: String, key: String) -> Result<String, S
         .map_err(|e| e.to_string())?
 }
 
+// ─────────────── Диагностика / ID устройства ───────────────
+
+/// Устойчивый хэш (FNV-1a 64) — стабилен между версиями Rust, в отличие от DefaultHasher.
+fn fnv1a(s: &str) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in s.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// Стабильный ID устройства: аппаратный machine-id ОС → FNV-1a → короткий неизменяемый
+/// отпечаток `XXXX-XXXX-XXXX-XXXX`. Не меняется между запусками/переустановками; сырой
+/// аппаратный UUID наружу не отдаём. Фолбэк — сгенерированный и сохранённый ID.
+#[tauri::command]
+fn device_id() -> String {
+    let base = machine_uid::get()
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| {
+            if let Some(v) = engine::store::get_setting("device_fallback_id") {
+                return v;
+            }
+            let seed = format!("{:?}", std::time::SystemTime::now());
+            let id = format!("{:016X}", fnv1a(&seed));
+            let _ = engine::store::set_setting("device_fallback_id", &id);
+            id
+        });
+    let hex = format!("{:016X}", fnv1a(&format!("speakagent:{}", base.trim())));
+    format!("{}-{}-{}-{}", &hex[0..4], &hex[4..8], &hex[8..12], &hex[12..16])
+}
+
+/// Служебная информация одним текстом — чтобы пользователь мог скопировать/отправить в баг-репорт.
+#[tauri::command]
+fn diagnostics() -> String {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    let ram = sys.total_memory() as f64 / 1e9;
+    let gpu = engine::gpu::best_gpu();
+    let accel = if engine::gpu::should_offload().is_some() { "GPU" } else { "CPU" };
+    let backend = engine::store::get_setting("llm_backend").unwrap_or_else(|| "local".into());
+    let installed: Vec<String> = engine::models::list()
+        .into_iter()
+        .filter(|m| m.installed)
+        .map(|m| m.id)
+        .collect();
+    format!(
+        "SpeakAgent Desktop — служебная информация\n\
+         Версия: {ver}\n\
+         ID устройства: {dev}\n\
+         ОС: {os} {arch}\n\
+         Железо: {cores} ядер, {ram:.1} ГБ ОЗУ\n\
+         Видеокарта: {gpuname} · ускорение «Итогов»: {accel}\n\
+         ASR: {asr} · готова: {ready}\n\
+         ИИ-функции: {backend} · модель {llm}\n\
+         ffmpeg: {ffmpeg}\n\
+         Скачанные модели: {installed}",
+        ver = env!("CARGO_PKG_VERSION"),
+        dev = device_id(),
+        os = std::env::consts::OS,
+        arch = std::env::consts::ARCH,
+        cores = physical_cores(),
+        gpuname = gpu.map(|g| g.name).unwrap_or_else(|| "нет".into()),
+        asr = engine::models::active_id(),
+        ready = engine::models::active_asr_files().is_some(),
+        llm = engine::models::active_llm_id(),
+        ffmpeg = engine::models::ffmpeg().is_some(),
+        installed = installed.join(", "),
+    )
+}
+
 /// Показать файл в системном менеджере (Finder/Explorer) с выделением.
 #[tauri::command]
 fn reveal_file(path: String) -> Result<(), String> {
@@ -747,7 +819,9 @@ pub fn run() {
             set_cloud_config,
             test_cloud,
             open_url,
-            reveal_file
+            reveal_file,
+            device_id,
+            diagnostics
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
