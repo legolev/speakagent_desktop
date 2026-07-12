@@ -141,8 +141,13 @@ Download the latest installer from [**Releases**](../../releases):
 An installed app **updates itself**: About → "Check" (or a silent check when the page opens)
 finds a new GitHub release and installs it seamlessly.
 
-> The app isn't code-signed with a paid developer certificate yet, so the first launch shows
-> a warning: on macOS right-click → "Open"; on Windows "More info" → "Run anyway".
+> **First launch** (the app isn't code-signed with a paid Apple/Microsoft certificate yet):
+> - **macOS** — drag it to Applications, then **right-click the app → "Open"** → "Open".
+>   If macOS says it's "damaged", clear the quarantine once:
+>   `xattr -cr /Applications/SpeakAgent.app`
+> - **Windows** — on the SmartScreen prompt click "More info" → "Run anyway".
+>
+> After that the app updates itself — no more warnings.
 
 ### Build from source
 

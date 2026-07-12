@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SpeakAgent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "pro.speakagent.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -57,7 +57,8 @@
       "resources/models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx": "models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx"
     },
     "macOS": {
-      "minimumSystemVersion": "11.0"
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-"
     }
   }
 }

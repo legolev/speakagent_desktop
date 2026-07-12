@@ -4817,7 +4817,7 @@ dependencies = [
 
 [[package]]
 name = "speakagent"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "axum",
  "bzip2",

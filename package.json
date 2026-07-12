@@ -1,7 +1,7 @@
 {
   "name": "speakagent-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",
