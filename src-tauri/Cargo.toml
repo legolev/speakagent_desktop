@@ -56,7 +56,7 @@ genpdf = "0.2"
 sysinfo = "0.32"
 # Восстановление пунктуации/регистра (RUPunct): чистый-Rust ONNX-рантайм tract —
 # НЕ линкует onnxruntime (у sherpa свой, статический) → без второй DLL и без cmake.
-tract-onnx = "0.21"
+tract-onnx = "0.23"
 # Токенизатор WordPiece для модели пунктуации. Без onig/esaxx (C/C++); fancy-regex — чистый Rust.
 tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
 # Стабильный аппаратный ID машины (IOPlatformUUID / MachineGuid / machine-id) — для ID устройства.
