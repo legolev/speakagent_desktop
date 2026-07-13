@@ -232,10 +232,12 @@ macOS, the code style, and the release process + maintainer secrets are all in
 | 3 | Meeting notes — minutes/summaries/to-dos via a local LLM | ✅ Done |
 | — | Dictation (push-to-talk), local MCP server, tray | ✅ Done |
 | — | Auto-update (GitHub Releases, signed updates) | ✅ Done |
-| 4 | Code signing & notarization — no Gatekeeper/SmartScreen warnings | ⬜ Planned |
-| 5+ | Folder watch, subtitle editor, glossary, i18n, live streaming | ⬜ Planned |
+| — | English interface (RU/EN) + bilingual "Meeting notes" prompts | ✅ Done |
+| — | Speaker editing (merge/reassign) + optional LLM text cleanup | ✅ Done |
+| 4 | **Code signing (Apple Developer ID) + notarization** — fix dictation-permission resets on update and Gatekeeper/SmartScreen warnings | ⬜ In progress |
+| 5+ | Diarization tuning (speaker accuracy), folder watch, subtitle editor, glossary, live streaming | ⬜ Planned |
 
-> Early days (0.1.x): the core and main workflows run on Windows and macOS, but the app
+> Early days (0.x): the core and main workflows run on Windows and macOS, but the app
 > isn't signed with a paid certificate yet — the OS shows a first-launch warning (how to get
 > past it is in [Install](#-install)). The project **stays free**; development is supported
 > by [donations](#-support-the-project).
