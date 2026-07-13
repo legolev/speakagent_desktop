@@ -4,12 +4,12 @@
 
 <img src="assets/banner.svg" alt="SpeakAgent Desktop" width="100%">
 
-<h3>Transcription, speaker labels, and meeting notes — 100% offline, on any PC</h3>
+<h3>Transcription with speakers · voice input · a local MCP server — 100% offline</h3>
 
 <p>
-A desktop app that turns any audio or video into a clean, speaker-labelled transcript,
-then — with a local LLM — into a summary, meeting minutes, or to-do list. Everything runs on
-your machine: not a single byte of the recording ever leaves it.
+Three tools in one desktop app: <b>transcription</b> with speaker labels and AI notes,
+<b>voice input</b> in any program, and a <b>local MCP server</b> for AI agents. Everything
+runs on your machine — not a single byte of your recording ever leaves it.
 </p>
 
 <p><b>Free · no account, no sign-up · everything runs locally</b></p>
@@ -30,6 +30,7 @@ your machine: not a single byte of the recording ever leaves it.
 
 ## Table of contents
 
+[Three tools](#-three-tools-in-one-app) ·
 [Features](#-features) ·
 [Screenshots](#-screenshots) ·
 [How it works](#️-how-it-works) ·
@@ -39,6 +40,21 @@ your machine: not a single byte of the recording ever leaves it.
 [Tech stack](#-tech-stack) ·
 [Roadmap](#️-roadmap) ·
 [License](#-license)
+
+## 🎯 Three tools in one app
+
+**🎧 Transcribe recordings.** A meeting, interview, lecture, or voice memo → clean text with
+"who said what" and **AI meeting notes** (summary, minutes, to-dos). Karaoke-highlight
+player, TXT/MD/PDF export, searchable history.
+
+**🎙️ Voice input (dictation).** A global hotkey in any program: hold, speak, release — text
+is recognized locally and pasted at the cursor. Like superwhisper, but offline and free.
+
+**🔌 Local MCP server.** Your transcription and diarization engine, available to any AI/code
+agent (Claude Code, Cursor, VS Code, Codex) right on your machine — transcribe files,
+diarize, generate minutes, and browse history over the Model Context Protocol.
+
+> All **fully offline**, on any hardware, no subscriptions, no accounts.
 
 ## ✨ Features
 
