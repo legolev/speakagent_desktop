@@ -1378,17 +1378,15 @@ fn show_main(app: &AppHandle) {
 #[cfg(desktop)]
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder};
-    use tauri::tray::TrayIconBuilder;
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
-    // Строка статуса + показать окно + выход. Меню открывается ЛЕВЫМ кликом (нативно для macOS).
+    // Левый клик по иконке — показать окно. Правый клик — контекстное меню (статус + выход).
     let status = MenuItemBuilder::with_id("status", tray_status_text())
         .enabled(false)
         .build(app)?;
-    let show = MenuItemBuilder::with_id("show", "Показать окно").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
     let menu = MenuBuilder::new(app)
         .item(&status)
-        .item(&show)
         .separator()
         .item(&quit)
         .build()?;
@@ -1398,14 +1396,22 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = TrayIconBuilder::with_id("main-tray")
         .tooltip("SpeakAgent")
         .menu(&menu)
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            "show" => show_main(app),
-            "quit" => {
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == "quit" {
                 really_quit().store(true, Ordering::Relaxed);
                 app.exit(0);
             }
-            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main(tray.app_handle());
+            }
         });
 
     // Монохромная template-иконка (как у нативных приложений): чёрный силуэт + альфа,
