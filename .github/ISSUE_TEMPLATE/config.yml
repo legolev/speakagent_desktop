@@ -1,1 +1,5 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Уязвимость безопасности / Security vulnerability
+    url: https://github.com/legolev/speakagent_desktop/security/advisories/new
+    about: Пожалуйста, сообщайте о проблемах безопасности приватно, а не публичным issue.

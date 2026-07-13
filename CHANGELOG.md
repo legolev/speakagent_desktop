@@ -81,7 +81,7 @@ Benchmarked the native ONNX engine on real audio before committing to the archit
 ## Quality overhaul — RU transcription + diarization
 
 - `d9c0927` engine quality pass, driven by real-meeting testing:
-  - diarization post-processing ported from the proven cloud worker (collar → max-overlap
+  - diarization post-processing pipeline (collar → max-overlap
     word assignment → A-B-A island smoothing → merge → force-single) — fixes torn replicas
     and "dozens of speakers"; multilingual CAM++ embedder replaces the zh-cn one;
     optional exact speaker count from the UI;
@@ -98,7 +98,7 @@ Fully offline protocols / summaries / to-do lists from transcripts.
 
 - `c4ca44e` **slice 1** — llama-server sidecar (llama.cpp b9957, pinned), downloaded at
   runtime like ffmpeg (no C++ in the build); model catalog: Qwen3-4B-Instruct-2507 Q4_K_M
-  (default) + Qwen3-1.7B (weak PCs); cloud prompts ported verbatim; headless `try_llm`
+  (default) + Qwen3-1.7B (weak PCs); tuned meeting-summary prompts; headless `try_llm`
   (summary 33 s, todo 20 s on a real meeting). macOS prep: per-OS asset URLs, `tool_exe()`,
   unix exec-bit, debug-only dev fallback.
 - `78db140` **slice 2** — SSE streaming, cancellation, retries; map-reduce for long

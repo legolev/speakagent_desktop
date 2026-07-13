@@ -1,0 +1,26 @@
+# Normalize line endings across Windows/macOS/Linux checkouts.
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets — never touch line endings / diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.mp3 binary
+*.dmg binary
+*.exe binary
+
+# Generated lockfiles: collapse in diffs and exclude from language stats.
+pnpm-lock.yaml linguist-generated=true
+src-tauri/Cargo.lock linguist-generated=true

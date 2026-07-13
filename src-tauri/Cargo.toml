@@ -4,7 +4,7 @@ version = "0.1.2"
 description = "SpeakAgent Desktop — offline transcription & diarization"
 authors = ["SpeakAgent"]
 edition = "2021"
-license-file = "../LICENSE.md"
+license = "Apache-2.0"
 repository = "https://github.com/legolev/speakagent_desktop"
 readme = "../README.md"
 

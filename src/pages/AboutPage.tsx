@@ -11,12 +11,20 @@ import {
   RefreshCw,
   Loader2,
   Download,
+  Heart,
+  Coins,
 } from "lucide-react";
 import { appInfo, systemInfo, isReady, llmReady, openUrl } from "../lib/api";
 import { checkUpdate, installUpdate, type Update } from "../lib/update";
 import Diagnostics from "../components/Diagnostics";
 
 const REPO = "https://github.com/legolev/speakagent_desktop";
+
+// Донаты: впишите ссылки — и блок «Поддержать проект» появится на этой странице.
+// Пусто → блок скрыт (не показываем битые ссылки). Boosty — основной канал (РФ/СНГ,
+// подписки + разовые); крипто-страница — TON/USDT для зарубежных донатеров.
+const BOOSTY_URL: string = ""; // напр. "https://boosty.to/ВАШ_НИК"
+const DONATE_URL: string = ""; // страница с крипто-кошельками, напр. "https://ВАШ_НИК.github.io/donate"
 
 export default function AboutPage() {
   const { data: app } = useQuery({ queryKey: ["appInfo"], queryFn: appInfo });
@@ -169,7 +177,7 @@ export default function AboutPage() {
           value="github.com/legolev/speakagent_desktop"
           onClick={() => openUrl(REPO).catch(() => {})}
         />
-        <InfoRow icon={ShieldCheck} label="Лицензия" value="PolyForm Noncommercial 1.0.0" />
+        <InfoRow icon={ShieldCheck} label="Лицензия" value="Apache 2.0" />
         <InfoRow
           icon={HardDrive}
           label="Железо"
@@ -187,6 +195,37 @@ export default function AboutPage() {
           }
         />
       </div>
+
+      {/* Поддержать проект (появляется, когда заданы ссылки на донаты) */}
+      {(BOOSTY_URL || DONATE_URL) && (
+        <>
+          <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
+            Поддержать проект
+          </h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Приложение бесплатное и офлайн. Если оно вам помогает — можно поддержать
+            разработку. Это не покупает поддержку или приоритет, просто помогает проекту жить.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {BOOSTY_URL && (
+              <button
+                onClick={() => openUrl(BOOSTY_URL).catch(() => {})}
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
+              >
+                <Heart size={15} /> Boosty
+              </button>
+            )}
+            {DONATE_URL && (
+              <button
+                onClick={() => openUrl(DONATE_URL).catch(() => {})}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/5"
+              >
+                <Coins size={15} /> Крипта (TON/USDT)
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Состояние компонентов */}
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">

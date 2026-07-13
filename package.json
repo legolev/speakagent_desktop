@@ -2,7 +2,7 @@
   "name": "speakagent-desktop",
   "private": true,
   "version": "0.1.2",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/legolev/speakagent_desktop"

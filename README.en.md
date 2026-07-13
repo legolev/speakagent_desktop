@@ -8,9 +8,11 @@
 
 <p>
 A desktop app that turns any audio or video into a clean, speaker-labelled transcript,
-then — with a local LLM — into a summary, protocol, or to-do list. Everything runs on
+then — with a local LLM — into a summary, meeting minutes, or to-do list. Everything runs on
 your machine: not a single byte of the recording ever leaves it.
 </p>
+
+<p><b>Free · no account, no sign-up · everything runs locally</b></p>
 
 <p>
 <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/legolev/speakagent_desktop?style=flat&color=f59e0b&label=release" alt="Latest release"></a>
@@ -18,7 +20,7 @@ your machine: not a single byte of the recording ever leaves it.
 <img src="https://img.shields.io/badge/Windows-10%2F11-0a0a0b?style=flat&logo=windows11&logoColor=fbbf24" alt="Windows 10/11">
 <img src="https://img.shields.io/badge/macOS-Intel%20%2B%20Apple%20Silicon-0a0a0b?style=flat&logo=apple&logoColor=white" alt="macOS Intel + Apple Silicon">
 <img src="https://img.shields.io/badge/100%25-offline-16a34a?style=flat" alt="100% offline">
-<img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-f59e0b?style=flat" alt="PolyForm NC license">
+<img src="https://img.shields.io/badge/license-Apache%202.0-f59e0b?style=flat" alt="Apache 2.0 license">
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
 </p>
 
@@ -39,6 +41,10 @@ your machine: not a single byte of the recording ever leaves it.
 [License](#-license)
 
 ## ✨ Features
+
+**Who it's for:** journalists, researchers, students, lawyers, clinicians, HR — anyone who
+needs to turn an interview, lecture, meeting, or voice memo into text privately, without
+uploading the recording to someone else's cloud.
 
 | | |
 |---|---|
@@ -79,7 +85,7 @@ your machine: not a single byte of the recording ever leaves it.
 
 ## ⚙️ How it works
 
-One native C++/ONNX pipeline, entirely on your machine:
+A single native pipeline, entirely on your machine:
 
 ```mermaid
 flowchart LR
@@ -183,37 +189,14 @@ cargo run --example try_transcribe -- "<file>" [secs] [diarize]
 cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|todo]
 ```
 
-### Releases (for maintainers)
+### Want to help?
 
-Building `.dmg`/`.exe` and publishing to Releases is automated via GitHub Actions
-([`.github/workflows/release.yml`](.github/workflows/release.yml)):
+Contributions are welcome — issues and pull requests are open. How to build on Windows and
+macOS, the code style, and the release process + maintainer secrets are all in
+[**`CONTRIBUTING.md`**](CONTRIBUTING.md).
 
-```bash
-# 1) bump "version" in src-tauri/tauri.conf.json and package.json (e.g. 0.1.2)
-# 2) commit and push a tag:
-git tag v0.1.2 && git push origin v0.1.2
-```
-
-CI builds macOS (arm64) and Windows, signs the update artifacts, and creates a Release with
-installers + `latest.json` (which drives auto-update).
-
-**Repository secrets** (Settings → Secrets → Actions):
-
-_Update signing_ (Ed25519, `pnpm tauri signer generate`; the public key is already in
-`tauri.conf.json → plugins.updater.pubkey`):
-- `TAURI_SIGNING_PRIVATE_KEY` — the private key;
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — the key password (empty if none).
-
-_macOS code signing_ (a self-signed certificate — a stable "identity" so macOS permissions
-don't reset across updates; CI adds trust to it automatically):
-- `APPLE_CERTIFICATE` — the `.p12` in base64;
-- `APPLE_CERTIFICATE_PASSWORD` — the `.p12` password;
-- `APPLE_SIGNING_IDENTITY` — the certificate's Common Name (e.g. `SpeakAgent`);
-- `KEYCHAIN_PASSWORD` — any password for the temporary CI keychain.
-
-⚠️ Keep private keys/certificates secret. Without the macOS secrets the build is unsigned
-(ad-hoc) — it works, but permissions reset on every update. For a fully seamless launch (no
-Gatekeeper warnings) you need a paid Apple Developer ID + notarization.
+> This is a noncommercial side project I work on in my spare time. Responses may be slow and
+> there's no support guarantee — the app is provided as-is.
 
 ## 🛠 Tech stack
 
@@ -233,17 +216,34 @@ Gatekeeper warnings) you need a paid Apple Developer ID + notarization.
 | 3 | Meeting notes — minutes/summaries/to-dos via a local LLM | ✅ Done |
 | — | Dictation (push-to-talk), local MCP server, tray | ✅ Done |
 | — | Auto-update (GitHub Releases, signed updates) | ✅ Done |
-| 4 | Monetization / licensing, code signing (Gatekeeper/SmartScreen) | ⬜ Planned |
+| 4 | Code signing & notarization — no Gatekeeper/SmartScreen warnings | ⬜ Planned |
 | 5+ | Folder watch, subtitle editor, glossary, i18n, live streaming | ⬜ Planned |
+
+> Early days (0.1.x): the core and main workflows run on Windows and macOS, but the app
+> isn't signed with a paid certificate yet — the OS shows a first-launch warning (how to get
+> past it is in [Install](#-install)). The project **stays free**; development is supported
+> by [donations](#-support-the-project).
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 
 ## 📄 License
 
-The code is licensed under [**PolyForm Noncommercial 1.0.0**](LICENSE.md): free to study,
-modify, and use for **noncommercial** purposes. Third-party components and models keep
-their own licenses — notably, **the default Russian GigaAM model is noncommercial**.
-The full list is in [`NOTICE.md`](NOTICE.md).
+The app's code is licensed under the open-source [**Apache 2.0**](LICENSE.md) license:
+free to use, modify, and redistribute, including in commercial projects. **However**,
+the default Russian model — **GigaAM — is noncommercial**, so out of the box the app is
+meant for personal, educational, and noncommercial use. For commercial use, pick a
+permissively-licensed model in settings (Parakeet — CC-BY-4.0, Whisper — MIT). All
+component and model licenses are in [`NOTICE.md`](NOTICE.md).
+
+## 💛 Support the project
+
+The app is free, offline, and subscription-free. If it helps you, you can support its
+development. This doesn't buy support or priority — it just helps the project stay alive.
+
+- **[Boosty](https://boosty.to/legolev)** — one-off or subscription _(set your own link)_
+- **Crypto** — TON / USDT (TRC-20): addresses on the [donate page](#) _(set your own link)_
+
+> _Donation links are placeholders for now — replace them with your own before going public._
 
 ## 🙏 Acknowledgements
 
