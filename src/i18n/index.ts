@@ -19,6 +19,7 @@ import { onboarding } from "./dict/onboarding";
 import { meeting } from "./dict/meeting";
 import { resultView } from "./dict/resultView";
 import { beautify } from "./dict/beautify";
+import { speakers } from "./dict/speakers";
 import { aiProvider } from "./dict/aiProvider";
 import { modelSelector } from "./dict/modelSelector";
 import { diagnostics } from "./dict/diagnostics";
@@ -45,6 +46,7 @@ const ru = {
   meeting: meeting.ru,
   resultView: resultView.ru,
   beautify: beautify.ru,
+  speakers: speakers.ru,
   aiProvider: aiProvider.ru,
   modelSelector: modelSelector.ru,
   diagnostics: diagnostics.ru,
@@ -70,6 +72,7 @@ const en = {
   meeting: meeting.en,
   resultView: resultView.en,
   beautify: beautify.en,
+  speakers: speakers.en,
   aiProvider: aiProvider.en,
   modelSelector: modelSelector.en,
   diagnostics: diagnostics.en,

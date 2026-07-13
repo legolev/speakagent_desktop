@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowRightLeft } from "lucide-react";
 import { parseReplicas, speakerLabel, timeToSec } from "../lib/diarize";
 import { highlightText } from "../lib/highlight";
 import { useT } from "../i18n";
@@ -10,6 +11,8 @@ interface Props {
   activeIndex?: number; // karaoke: индекс подсвеченной реплики
   onSeek?: (sec: number) => void; // клик по реплике → перемотка плеера
   query?: string; // подсветка совпадений при поиске по тексту
+  speakers?: number[]; // список спикеров (для переназначения реплики)
+  onReassign?: (index: number, speaker: number) => void; // переназначить реплику
 }
 
 const COLOR = [
@@ -36,11 +39,14 @@ export default function DiarizeRenderer({
   activeIndex,
   onSeek,
   query,
+  speakers,
+  onReassign,
 }: Props) {
   const t = useT();
   const replicas = parseReplicas(text);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [val, setVal] = useState("");
+  const [moveIdx, setMoveIdx] = useState<number | null>(null);
 
   if (replicas.length === 0) {
     return (
@@ -91,6 +97,36 @@ export default function DiarizeRenderer({
                 </span>
               )}
               <span className="text-zinc-600">{r.time}</span>
+              {onReassign && speakers && speakers.length > 1 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setMoveIdx(moveIdx === i ? null : i)}
+                    title={t.speakers.reassignTitle}
+                    className="flex text-zinc-600 transition hover:text-zinc-300"
+                  >
+                    <ArrowRightLeft size={12} />
+                  </button>
+                  {moveIdx === i && (
+                    <div className="absolute left-0 top-full z-20 mt-1 min-w-[9rem] rounded-lg border border-white/10 bg-zinc-900 p-1 shadow-xl">
+                      <div className="px-2 py-1 text-[11px] text-zinc-500">{t.speakers.moveTo}</div>
+                      {speakers
+                        .filter((s) => s !== r.speaker)
+                        .map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              onReassign(i, s);
+                              setMoveIdx(null);
+                            }}
+                            className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 transition hover:bg-white/10"
+                          >
+                            {speakerLabel(s, names)}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div
               onClick={onSeek ? () => onSeek(timeToSec(r.time)) : undefined}

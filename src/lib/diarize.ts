@@ -41,3 +41,36 @@ export function speakerNumbers(text: string): number[] {
   }
   return seen.sort((a, b) => a - b);
 }
+
+/** Число реплик на каждого спикера (для ростера спикеров). */
+export function speakerCounts(text: string): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const r of parseReplicas(text)) out[r.speaker] = (out[r.speaker] ?? 0) + 1;
+  return out;
+}
+
+/**
+ * Переписать номера спикеров в диаризованном тексте — основа для слияния и
+ * переназначения реплик. `pick(speaker, replicaIndex)` возвращает новый номер спикера
+ * для реплики (индекс совпадает с порядком в parseReplicas). Строки не добавляются и не
+ * удаляются — таймкоды, порядок и индексы реплик сохраняются, правка долетает до рендера,
+ * экспорта, поиска и LLM-итогов (текст — единый источник истины).
+ */
+export function rewriteSpeakers(
+  text: string,
+  pick: (speaker: number, index: number) => number,
+): string {
+  let idx = -1;
+  return text
+    .split("\n")
+    .map((line) => {
+      const m = line.match(RE);
+      if (!m) return line;
+      idx += 1;
+      const cur = Number(m[1]);
+      const next = pick(cur, idx);
+      if (next === cur) return line;
+      return `Speaker${next}${line.slice(`Speaker${m[1]}`.length)}`;
+    })
+    .join("\n");
+}

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, Search, Sparkles, Loader2 } from "lucide-react";
 import AudioPlayer from "./AudioPlayer";
 import DiarizeRenderer from "./DiarizeRenderer";
+import SpeakerRoster from "./SpeakerRoster";
 import { ArtifactPanel, TAB_DEFS, tabLabel, kindTitle, type Tab } from "./MeetingResults";
-import { parseReplicas, timeToSec } from "../lib/diarize";
+import { parseReplicas, speakerNumbers, timeToSec } from "../lib/diarize";
 import { highlightText, countMatches } from "../lib/highlight";
 import { useJobs } from "../store/jobs";
 import { useT } from "../i18n";
@@ -52,6 +53,8 @@ export default function ResultView({
   const beautify = useJobs((s) => s.beautify);
   const cancelBeautify = useJobs((s) => s.cancelBeautify);
   const hydrateBeautified = useJobs((s) => s.hydrateBeautified);
+  const mergeSpeaker = useJobs((s) => s.mergeSpeaker);
+  const reassignReplica = useJobs((s) => s.reassignReplica);
 
   // Показываемый текст: оригинал или «обработанный» (если он выбран и уже готов).
   const shownText = view === "beautified" && beautified?.text ? beautified.text : text;
@@ -135,6 +138,13 @@ export default function ResultView({
           )}
         </div>
       )}
+      {diarize && jobId && onRename && view === "original" && (
+        <SpeakerRoster
+          text={text}
+          names={names}
+          onMerge={(from, into) => mergeSpeaker(jobId, from, into)}
+        />
+      )}
       <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-2">
         <div className="relative flex-1">
           <Search
@@ -200,6 +210,12 @@ export default function ResultView({
             activeIndex={withPlayer ? activeIndex : undefined}
             onSeek={withPlayer ? (sec) => seekRef.current?.(sec) : undefined}
             query={tq}
+            speakers={jobId && view === "original" ? speakerNumbers(text) : undefined}
+            onReassign={
+              jobId && view === "original"
+                ? (i, sp) => reassignReplica(jobId, i, sp)
+                : undefined
+            }
           />
         ) : (
           <div className="select-text whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">

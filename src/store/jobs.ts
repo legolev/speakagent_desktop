@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Channel } from "@tauri-apps/api/core";
+import { rewriteSpeakers } from "../lib/diarize";
 import {
   transcribe,
   cancelTranscribe,
@@ -83,6 +84,10 @@ interface JobsState {
   rename: (id: string, speaker: number, name: string) => void;
   /** Переименовать саму запись (её название в истории). */
   renameJob: (id: string, name: string) => void;
+  /** Объединить спикера `from` в `into` (переписывает текст — долетает и до итогов). */
+  mergeSpeaker: (id: string, from: number, into: number) => void;
+  /** Переназначить одну реплику (по индексу parseReplicas) другому спикеру. */
+  reassignReplica: (id: string, replicaIndex: number, toSpeaker: number) => void;
   remove: (id: string) => void;
   clear: () => void;
   /** Перезапустить расшифровку существующей записи (той же id) — «расшифровать заново». */
@@ -474,5 +479,52 @@ export const useJobs = create<JobsState>((set, get) => ({
 
   cancelBeautify: (jobId) => {
     apiCancelBeautify(jobId).catch(() => {});
+  },
+
+  // ── Правка спикеров (слияние / переназначение) ──
+  // Обе операции переписывают сам текст «SpeakerN …» (единый источник истины), поэтому
+  // правка долетает до рендера, экспорта, поиска И LLM-итогов. Старые итоги/обработанный
+  // текст строились по прежней атрибуции — сбрасываем их (пользователь пересоберёт).
+
+  mergeSpeaker: (id, from, into) => {
+    if (from === into) return;
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job || !job.text) return;
+    const text = rewriteSpeakers(job.text, (sp) => (sp === from ? into : sp));
+    if (text === job.text) return;
+    set((s) => {
+      const jobs = s.jobs.map((j) => {
+        if (j.id !== id) return j;
+        const names = { ...j.names };
+        delete names[from]; // имя слитого спикера больше не нужно
+        return { ...j, text, partial: text, names };
+      });
+      const results = { ...s.results };
+      delete results[id];
+      const beautified = { ...s.beautified };
+      delete beautified[id];
+      return { jobs, results, beautified };
+    });
+    const j = get().jobs.find((x) => x.id === id);
+    if (j && j.status !== "running") saveJob(toStored(j)).catch(() => {});
+    clearResults(id).catch(() => {});
+  },
+
+  reassignReplica: (id, replicaIndex, toSpeaker) => {
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job || !job.text) return;
+    const text = rewriteSpeakers(job.text, (sp, i) => (i === replicaIndex ? toSpeaker : sp));
+    if (text === job.text) return;
+    set((s) => {
+      const jobs = s.jobs.map((j) => (j.id === id ? { ...j, text, partial: text } : j));
+      const results = { ...s.results };
+      delete results[id];
+      const beautified = { ...s.beautified };
+      delete beautified[id];
+      return { jobs, results, beautified };
+    });
+    const j = get().jobs.find((x) => x.id === id);
+    if (j && j.status !== "running") saveJob(toStored(j)).catch(() => {});
+    clearResults(id).catch(() => {});
   },
 }));
