@@ -32,6 +32,18 @@ body {
   -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
+/* Выпадающие списки <select>: нативный всплывающий список в WebView2 (Windows) не
+   наследует dark color-scheme от :root → белый фон и невидимый тёмный текст. Форсируем
+   тёмную схему на самом контроле и явные цвета для опций (Chromium/WebView2 их уважает). */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: #18181b; /* zinc-900 */
+  color: #f4f4f5;
+}
+
 /* тонкий скроллбар */
 ::-webkit-scrollbar {
   width: 10px;

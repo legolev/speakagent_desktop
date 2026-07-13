@@ -789,17 +789,36 @@ fn open_url(url: String) -> Result<(), String> {
     if !ALLOWED_SCHEMES.iter().any(|s| url.starts_with(s)) {
         return Err("invalid address".into());
     }
+
+    // Windows: НЕ через `explorer <url>`. explorer.exe не распознаёт длинные
+    // percent-encoded ссылки (напр. pre-filled GitHub-issue с диагностикой в `?body=…`)
+    // как URL и открывает окно Проводника вместо браузера. ShellExecuteW с глаголом
+    // "open" отдаёт адрес системному обработчику протокола → всегда открывается браузер
+    // по умолчанию, длина и кодировка не важны.
     #[cfg(target_os = "windows")]
-    let program = "explorer";
-    #[cfg(target_os = "macos")]
-    let program = "open";
-    #[cfg(target_os = "linux")]
-    let program = "xdg-open";
-    std::process::Command::new(program)
-        .arg(&url)
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+    {
+        use windows::core::{w, HSTRING, PCWSTR};
+        use windows::Win32::UI::Shell::ShellExecuteW;
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+        let file = HSTRING::from(url.as_str());
+        // SAFETY: строки живут до конца вызова; hwnd = None (без родительского окна).
+        unsafe {
+            ShellExecuteW(None, w!("open"), &file, PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        #[cfg(target_os = "macos")]
+        let program = "open";
+        #[cfg(target_os = "linux")]
+        let program = "xdg-open";
+        std::process::Command::new(program)
+            .arg(&url)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
 }
 
 // ═══════════════════════ Диктовка (push-to-talk) ═══════════════════════
