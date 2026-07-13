@@ -1,14 +1,7 @@
 # .github/FUNDING.yml — кнопка «Sponsor» в шапке репозитория.
 #
-# ВАЖНО: ни один «нативный» ключ (github, ko_fi, patreon, liberapay,
-# buy_me_a_coffee, open_collective) НЕ подходит получателю в РФ — все они
-# завязаны на Stripe / PayPal / Payoneer, недоступные для вывода в России.
-# Поэтому используем ТОЛЬКО custom-ссылки (максимум 4). URL со «:» — в кавычках.
-#
-# Как включить: раскомментируйте строки ниже и подставьте свои ссылки.
-# Пока всё закомментировано — кнопка Sponsor не показывается (никаких битых ссылок).
-#
-# custom:
-#   - "https://boosty.to/ВАШ_НИК"            # осн.: подписки + разовые донаты (после KYC)
-#   - "https://ВАШ_НИК.github.io/donate"     # крипто-кошельки (TON / USDT-TRC20) и др.
-#   - "https://www.donationalerts.com/r/ВАШ_НИК"  # опц.: разовые, в т.ч. зарубежные карты
+# Ни один «нативный» ключ (github, ko_fi, patreon, liberapay, buy_me_a_coffee,
+# open_collective) не подходит получателю в РФ — все на Stripe / PayPal / Payoneer.
+# Поэтому только custom-ссылки. Крипто-адреса (BTC / TON) — в README, раздел «Поддержать».
+custom:
+  - "https://boosty.to/utekov"

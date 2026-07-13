@@ -20,11 +20,13 @@ import Diagnostics from "../components/Diagnostics";
 
 const REPO = "https://github.com/legolev/speakagent_desktop";
 
-// Донаты: впишите ссылки — и блок «Поддержать проект» появится на этой странице.
-// Пусто → блок скрыт (не показываем битые ссылки). Boosty — основной канал (РФ/СНГ,
-// подписки + разовые); крипто-страница — TON/USDT для зарубежных донатеров.
-const BOOSTY_URL: string = ""; // напр. "https://boosty.to/ВАШ_НИК"
-const DONATE_URL: string = ""; // страница с крипто-кошельками, напр. "https://ВАШ_НИК.github.io/donate"
+// Донаты. Boosty — основной канал (РФ/СНГ, подписки + разовые); крипто — для зарубежных.
+// Пусто → блок «Поддержать проект» скрыт.
+const BOOSTY_URL: string = "https://boosty.to/utekov";
+const CRYPTO: { label: string; addr: string }[] = [
+  { label: "BTC", addr: "bc1qakjpcjwxkttxs9d3qlgp42dpacngzry2qurhfp" },
+  { label: "TON (GRAM)", addr: "UQC2KkNMTefPUJEjGr0mMik2nNgOkP_NT-_qnmaBrZTHJ0LP" },
+];
 
 export default function AboutPage() {
   const { data: app } = useQuery({ queryKey: ["appInfo"], queryFn: appInfo });
@@ -37,6 +39,7 @@ export default function AboutPage() {
   const { data: llmR } = useQuery({ queryKey: ["llmReady"], queryFn: llmReady });
 
   const [eggs, setEggs] = useState(0);
+  const [copied, setCopied] = useState("");
 
   // ── Обновления ──
   const [upd, setUpd] = useState<Update | null>(null);
@@ -196,8 +199,8 @@ export default function AboutPage() {
         />
       </div>
 
-      {/* Поддержать проект (появляется, когда заданы ссылки на донаты) */}
-      {(BOOSTY_URL || DONATE_URL) && (
+      {/* Поддержать проект (появляется, когда заданы ссылки/адреса на донаты) */}
+      {(BOOSTY_URL || CRYPTO.length > 0) && (
         <>
           <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
             Поддержать проект
@@ -206,7 +209,7 @@ export default function AboutPage() {
             Приложение бесплатное и офлайн. Если оно вам помогает — можно поддержать
             разработку. Это не покупает поддержку или приоритет, просто помогает проекту жить.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {BOOSTY_URL && (
               <button
                 onClick={() => openUrl(BOOSTY_URL).catch(() => {})}
@@ -215,14 +218,25 @@ export default function AboutPage() {
                 <Heart size={15} /> Boosty
               </button>
             )}
-            {DONATE_URL && (
+            {CRYPTO.map((c) => (
               <button
-                onClick={() => openUrl(DONATE_URL).catch(() => {})}
+                key={c.label}
+                title={`Скопировать адрес ${c.label}: ${c.addr}`}
+                onClick={() => {
+                  navigator.clipboard.writeText(c.addr).catch(() => {});
+                  setCopied(c.label);
+                  setTimeout(() => setCopied(""), 1500);
+                }}
                 className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/5"
               >
-                <Coins size={15} /> Крипта (TON/USDT)
+                {copied === c.label ? (
+                  <Check size={15} className="text-emerald-400" />
+                ) : (
+                  <Coins size={15} />
+                )}
+                {copied === c.label ? "Скопировано" : c.label}
               </button>
-            )}
+            ))}
           </div>
         </>
       )}

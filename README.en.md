@@ -256,10 +256,9 @@ component and model licenses are in [`NOTICE.md`](NOTICE.md).
 The app is free, offline, and subscription-free. If it helps you, you can support its
 development. This doesn't buy support or priority — it just helps the project stay alive.
 
-- **[Boosty](https://boosty.to/legolev)** — one-off or subscription _(set your own link)_
-- **Crypto** — TON / USDT (TRC-20): addresses on the [donate page](#) _(set your own link)_
-
-> _Donation links are placeholders for now — replace them with your own before going public._
+- **[Boosty](https://boosty.to/utekov)** — one-off or subscription
+- **Bitcoin (BTC):** `bc1qakjpcjwxkttxs9d3qlgp42dpacngzry2qurhfp`
+- **TON (GRAM):** `UQC2KkNMTefPUJEjGr0mMik2nNgOkP_NT-_qnmaBrZTHJ0LP`
 
 ## 🙏 Acknowledgements
 
