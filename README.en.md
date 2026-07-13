@@ -24,6 +24,18 @@ runs on your machine — not a single byte of your recording ever leaves it.
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
 </p>
 
+<h3>Download the latest version</h3>
+
+<p>
+<a href="../../releases/latest/download/SpeakAgent-Windows-Setup.exe"><img src="https://img.shields.io/badge/Download-Windows_10%2F11-f59e0b?style=for-the-badge&logo=windows11&logoColor=white" alt="Download for Windows"></a>
+&nbsp;
+<a href="../../releases/latest/download/SpeakAgent-macOS-Apple-Silicon.dmg"><img src="https://img.shields.io/badge/Download-macOS_Apple_Silicon-0a0a0b?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Apple Silicon)"></a>
+&nbsp;
+<a href="../../releases/latest/download/SpeakAgent-macOS-Intel.dmg"><img src="https://img.shields.io/badge/Download-macOS_Intel-0a0a0b?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Intel)"></a>
+</p>
+
+<p><sub>Direct download of the latest version. Not sure which Mac you have? Apple menu → “About This Mac”: an “Apple M…” chip → Apple&nbsp;Silicon; “Intel” → Intel. First launch (Gatekeeper) — see <a href="#-install">Install</a>.</sub></p>
+
 </div>
 
 ---

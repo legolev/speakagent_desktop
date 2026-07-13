@@ -139,3 +139,24 @@ jobs:
             exit 1
           fi
           echo "OK: подпись не ad-hoc (Designated Requirement стабилен между сборками)."
+
+      # Дублируем установщик под СТАБИЛЬНЫМ (без версии) именем и грузим в релиз — чтобы в
+      # README работали прямые кнопки `releases/latest/download/SpeakAgent-<платформа>`.
+      # Штатные имена tauri содержат версию, поэтому «latest»-ссылка ломалась бы каждый релиз.
+      - name: Upload stable-named installer (README direct-download buttons)
+        if: startsWith(matrix.platform, 'macos') || startsWith(matrix.platform, 'windows')
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          case "${{ matrix.target }}" in
+            aarch64-apple-darwin) SRC=$(find src-tauri/target -name '*_aarch64.dmg' | head -1); DST="SpeakAgent-macOS-Apple-Silicon.dmg" ;;
+            x86_64-apple-darwin)  SRC=$(find src-tauri/target -name '*_x64.dmg' | head -1);      DST="SpeakAgent-macOS-Intel.dmg" ;;
+            *)                    SRC=$(find src-tauri/target -name '*-setup.exe' | head -1);    DST="SpeakAgent-Windows-Setup.exe" ;;
+          esac
+          if [ -z "${SRC:-}" ] || [ ! -f "$SRC" ]; then echo "installer not found — skip"; exit 0; fi
+          cp "$SRC" "$DST"
+          gh release upload "${{ github.ref_name }}" "$DST" --clobber --repo "${{ github.repository }}"
+          echo "uploaded stable-named asset: $DST"

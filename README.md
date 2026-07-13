@@ -24,6 +24,18 @@
 <img src="https://img.shields.io/badge/Tauri-2-fbbf24?style=flat&logo=tauri&logoColor=black" alt="Tauri 2">
 </p>
 
+<h3>Скачать последнюю версию</h3>
+
+<p>
+<a href="../../releases/latest/download/SpeakAgent-Windows-Setup.exe"><img src="https://img.shields.io/badge/Download-Windows_10%2F11-f59e0b?style=for-the-badge&logo=windows11&logoColor=white" alt="Скачать для Windows"></a>
+&nbsp;
+<a href="../../releases/latest/download/SpeakAgent-macOS-Apple-Silicon.dmg"><img src="https://img.shields.io/badge/Download-macOS_Apple_Silicon-0a0a0b?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS (Apple Silicon)"></a>
+&nbsp;
+<a href="../../releases/latest/download/SpeakAgent-macOS-Intel.dmg"><img src="https://img.shields.io/badge/Download-macOS_Intel-0a0a0b?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS (Intel)"></a>
+</p>
+
+<p><sub>Прямое скачивание последней версии. Не уверены, какой у вас Mac? Меню Apple → «Об этом Mac»: чип «Apple M…» — Apple&nbsp;Silicon; «Intel» — Intel. Про первый запуск (Gatekeeper) — раздел <a href="#-установка">Установка</a>.</sub></p>
+
 </div>
 
 ---
