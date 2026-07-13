@@ -4,7 +4,7 @@
 
 <img src="assets/banner.svg" alt="SpeakAgent Desktop" width="100%">
 
-<h3>Transcription, speakers, and meeting notes — 100% offline, on any PC</h3>
+<h3>Transcription, speaker labels, and meeting notes — 100% offline, on any PC</h3>
 
 <p>
 A desktop app that turns any audio or video into a clean, speaker-labelled transcript,
@@ -44,31 +44,38 @@ your machine: not a single byte of the recording ever leaves it.
 |---|---|
 | 🔒 **Fully offline** | Transcription, diarization, and AI notes run locally. Audio never leaves the machine — ideal for interviews, negotiations, and medical/legal/HR recordings. |
 | 🗣️ **Who spoke when** | Speech is split by speaker automatically: “Speaker 1 [00:14]: …”. Set the exact speaker count or let it auto-detect. |
-| 📝 **Meeting notes** | A local LLM turns the transcript into a summary, business protocol, interview digest, or to-do list — with interactive checkboxes. |
-| 💻 **Runs on weak hardware** | CPU-first: even on a single core it's ~7× faster than real time (~17 min per hour of audio), peak RAM < 1 GB. No GPU required. |
-| 🌍 **Model & language choice** | Russian by default (GigaAM v3), plus multilingual Parakeet (25 languages) and Whisper (98 languages) — switchable in settings. |
+| 📝 **Meeting notes** | A local LLM turns the transcript into a summary, meeting minutes, interview digest, or to-do list — with interactive checkboxes. |
+| 💻 **Runs on low-end hardware** | CPU-first: even on a single core it's ~7× faster than real time (~17 min per hour of audio), peak RAM < 1 GB. No GPU required. |
+| 🌍 **Model & language choice** | Russian by default (GigaAM v3), plus multilingual Parakeet (25 languages) and Whisper — from small to large-v3 turbo (99 languages) — switchable in settings. |
 | 🎧 **Karaoke-highlight player** | A built-in audio/video player highlights the active line; click a line to seek to it. |
-| ✏️ **Speaker renaming** | “Speaker 1” → “John”: names persist and are even injected into LLM prompts, so the protocol says “John”, not “Speaker 2”. |
+| ✏️ **Speaker renaming** | “Speaker 1” → “John”: names persist and are even injected into LLM prompts, so the minutes say “John”, not “Speaker 2”. |
 | 📄 **Export TXT / MD / PDF** | Export transcripts and notes; PDF is generated natively with an embedded Cyrillic-capable font. |
 | 🕘 **Recording history** | Results are stored in a local SQLite database and restored on the next launch. Auto-title from the meeting content. |
 | ⚡ **GPU acceleration for notes** | A discrete Vulkan GPU (≥ 4 GB VRAM) speeds the LLM up ~10× automatically; on an iGPU / without Vulkan it silently falls back to CPU. |
-| 📥 **Honest auto-download** | A first-run wizard and background downloads with real sizes shown in the UI; small models are embedded in the installer. |
+| 📥 **No-surprise downloads** | A first-run wizard and background downloads with real sizes shown in the UI; small models are embedded in the installer. |
 | 🖱️ **Drag & drop, cancel, ETA** | File drag-and-drop, a Stop button, self-calibrating time estimates, and a live status bar with CPU/RAM load. |
-| 🎙️ **Dictation (push-to-talk)** | A global hotkey (even a single key — e.g. right Shift): hold → speak, release → text is recognized locally, copied to the clipboard and pasted at the cursor in any app. History of quick recognitions on its own tab. |
-| 🔌 **Local MCP server** | A built-in Model Context Protocol server on `127.0.0.1`: any AI/code agent (Claude Code, Cursor, VS Code, Codex) can drive the engine — transcribe files, diarize, make protocols, browse history. One-click add-to-client buttons. |
+| 🎙️ **Dictation (push-to-talk)** | A global hotkey (even a single key — e.g. right Shift): hold → speak, release → text is recognized locally, copied to the clipboard and pasted at the cursor in any app. A history of your dictations on its own tab. |
+| 🔌 **Local MCP server** | A built-in Model Context Protocol server on `127.0.0.1`: any AI/code agent (Claude Code, Cursor, VS Code, Codex) can drive the engine — transcribe files, diarize, generate minutes, browse history. One-click add-to-client buttons. |
 | 🖥️ **Tray + background** | Minimizes to the tray (system-style icon); closing the window doesn't stop processing or the MCP server. |
 | ⬆️ **Auto-update** | About → "Check": the app finds a newer GitHub release, downloads and installs it seamlessly (signed updates). |
 
 ## 🎬 Screenshots
 
-> _UI screenshots will be added here._ For now, the brand banner above and the pipeline diagram below.
-
-<!-- Ready-to-fill markup — drop PNGs into assets/:
 <p align="center">
-  <img src="assets/screenshot-transcribe.png" width="49%" alt="Transcription and diarization">
-  <img src="assets/screenshot-results.png" width="49%" alt="Meeting notes">
+  <img src="assets/screenshots/demo-karaoke.gif" width="88%" alt="Speaker-labelled dialogue with timestamps; the active line highlights during playback">
 </p>
--->
+<p align="center"><sub>A speaker-labelled transcript — the active line highlights in sync with the player, and clicking a line seeks to it.</sub></p>
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="assets/screenshots/01-home.png" alt="Home"><br><sub>Home</sub></td>
+    <td width="50%" align="center"><img src="assets/screenshots/03-dictation.png" alt="Dictation"><br><sub>Dictation (push-to-talk)</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/screenshots/04-mcp.png" alt="MCP server"><br><sub>Local MCP server</sub></td>
+    <td align="center"><img src="assets/screenshots/05-about.png" alt="About"><br><sub>About · auto-update</sub></td>
+  </tr>
+</table>
 
 ## ⚙️ How it works
 
@@ -95,7 +102,7 @@ flowchart LR
 
 ## 🧠 Models
 
-The language model is chosen in settings; infra models for diarization download in the
+The language model is chosen in settings; the supporting diarization models download in the
 background. Everything is **downloaded on first run** and is not part of this repository.
 
 | Model | Role | Size | License |
@@ -103,8 +110,9 @@ background. Everything is **downloaded on first run** and is not part of this re
 | **GigaAM v3 CTC-punct** | ASR — Russian (default), punctuation + word timestamps | ~160 MB | ⚠️ Noncommercial |
 | **Parakeet-TDT-0.6b-v3** | ASR — 25 languages, fastest | ~640 MB | CC-BY-4.0 |
 | **Whisper small** | ASR — 98 languages | ~466 MB | MIT |
+| **Whisper large-v3 turbo** | ASR — 99 languages, for hard audio | ~540 MB | MIT |
 | **Qwen3-4B-Instruct-2507** (Q4_K_M) | LLM notes — best quality | ~2.4 GB | Apache-2.0 |
-| **Qwen3-1.7B** (Q4_K_M) | LLM notes — for weak PCs | ~1.1 GB | Apache-2.0 |
+| **Qwen3-1.7B** (Q4_K_M) | LLM notes — for low-end PCs | ~1.1 GB | Apache-2.0 |
 | pyannote-segmentation-3.0 | Diarization — speech segmentation | ~6 MB | MIT |
 | CAM++ (3D-Speaker) | Diarization — voice embedding | ~28 MB | Apache-2.0 |
 | Silero VAD | Voice activity detection | ~2 MB | MIT |
@@ -114,7 +122,7 @@ background. Everything is **downloaded on first run** and is not part of this re
 
 ## 📊 Performance
 
-CPU measurements (Phase 0 and real meetings). A GPU only helps the notes — it does not speed up ASR.
+CPU measurements (Phase 0 and real meetings). A GPU only helps with the notes — it doesn't speed up ASR.
 
 | Metric | Value |
 |---|---|
@@ -175,6 +183,38 @@ cargo run --example try_transcribe -- "<file>" [secs] [diarize]
 cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|todo]
 ```
 
+### Releases (for maintainers)
+
+Building `.dmg`/`.exe` and publishing to Releases is automated via GitHub Actions
+([`.github/workflows/release.yml`](.github/workflows/release.yml)):
+
+```bash
+# 1) bump "version" in src-tauri/tauri.conf.json and package.json (e.g. 0.1.2)
+# 2) commit and push a tag:
+git tag v0.1.2 && git push origin v0.1.2
+```
+
+CI builds macOS (arm64) and Windows, signs the update artifacts, and creates a Release with
+installers + `latest.json` (which drives auto-update).
+
+**Repository secrets** (Settings → Secrets → Actions):
+
+_Update signing_ (Ed25519, `pnpm tauri signer generate`; the public key is already in
+`tauri.conf.json → plugins.updater.pubkey`):
+- `TAURI_SIGNING_PRIVATE_KEY` — the private key;
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — the key password (empty if none).
+
+_macOS code signing_ (a self-signed certificate — a stable "identity" so macOS permissions
+don't reset across updates; CI adds trust to it automatically):
+- `APPLE_CERTIFICATE` — the `.p12` in base64;
+- `APPLE_CERTIFICATE_PASSWORD` — the `.p12` password;
+- `APPLE_SIGNING_IDENTITY` — the certificate's Common Name (e.g. `SpeakAgent`);
+- `KEYCHAIN_PASSWORD` — any password for the temporary CI keychain.
+
+⚠️ Keep private keys/certificates secret. Without the macOS secrets the build is unsigned
+(ad-hoc) — it works, but permissions reset on every update. For a fully seamless launch (no
+Gatekeeper warnings) you need a paid Apple Developer ID + notarization.
+
 ## 🛠 Tech stack
 
 - **Shell:** Tauri 2 (Rust core + system WebView). ~8 MB installer; ~32 MB release exe with sherpa-onnx + ONNX Runtime statically linked — no side DLLs.
@@ -189,8 +229,8 @@ cargo run --example try_llm -- gen <transcript.txt> [summary|business|interview|
 |---|---|---|
 | 0 | Validate the core (sherpa-onnx) on real files | ✅ Done |
 | 1 | Windows MVP: transcription + diarization, models, export, history, player | ✅ Done |
-| 3 | Meeting notes — protocols/summaries/to-dos via a local LLM | ✅ Done |
 | 2 | macOS (Intel + Apple Silicon) + Metal: `.app`/`.dmg`, vibrancy | ✅ Done |
+| 3 | Meeting notes — minutes/summaries/to-dos via a local LLM | ✅ Done |
 | — | Dictation (push-to-talk), local MCP server, tray | ✅ Done |
 | — | Auto-update (GitHub Releases, signed updates) | ✅ Done |
 | 4 | Monetization / licensing, code signing (Gatekeeper/SmartScreen) | ⬜ Planned |
