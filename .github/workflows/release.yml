@@ -59,8 +59,10 @@ jobs:
       # macOS: импорт самоподписанного сертификата подписи кода в временный keychain.
       # Стабильная «личность» (Authority=SpeakAgent) → разрешения (Universal Access /
       # Input Monitoring) переживают обновления, и Gatekeeper мягче («правый клик → Открыть»
-      # вместо «повреждено»). Сертификат самоподписанный → добавляем ему trust вручную
-      # (tauri-action этого не делает, т.к. рассчитан на доверенные Apple-сертификаты).
+      # вместо «повреждено»). ВАЖНО: сертификату НЕ добавляем trust (add-trusted-cert) —
+      # в headless-CI это вызывает GUI-запрос авторизации и НАВСЕГДА вешает джоб; для
+      # codesign доверие не нужно (хватает приватного ключа в keychain, identity видна
+      # в find-identity -v -p codesigning). Trust в CI-машине всё равно выбрасывается.
       - name: Import macOS signing certificate
         if: startsWith(matrix.platform, 'macos')
         env:
@@ -75,14 +77,12 @@ jobs:
             exit 0
           fi
           KC="$RUNNER_TEMP/app-signing.keychain-db"
-          P12="$RUNNER_TEMP/cert.p12"; CER="$RUNNER_TEMP/cert.pem"
+          P12="$RUNNER_TEMP/cert.p12"
           echo "$APPLE_CERTIFICATE" | base64 --decode > "$P12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
           security set-keychain-settings -lut 21600 "$KC"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
           security import "$P12" -k "$KC" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
-          security find-certificate -c "$APPLE_SIGNING_IDENTITY" -p -a "$KC" > "$CER"
-          security add-trusted-cert -r trustRoot -p codeSign -k "$KC" "$CER"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KC" >/dev/null
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | sed 's/[",]//g' | xargs)
           security find-identity -v -p codesigning "$KC"
