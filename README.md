@@ -189,13 +189,23 @@ git tag v0.1.1 && git push origin v0.1.1
 CI соберёт macOS (arm64) и Windows, подпишет артефакты обновления и создаст Release с
 установщиками + `latest.json` (по нему работает автообновление).
 
-**Секреты репозитория** (Settings → Secrets → Actions) — из сгенерированного ключа подписи
-обновлений (`pnpm tauri signer generate`):
+**Секреты репозитория** (Settings → Secrets → Actions):
+
+_Подпись обновлений_ (Ed25519, `pnpm tauri signer generate`; публичный ключ уже в
+`tauri.conf.json → plugins.updater.pubkey`):
 - `TAURI_SIGNING_PRIVATE_KEY` — приватный ключ;
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пароль ключа (пустой, если без пароля).
 
-Публичный ключ уже прописан в `tauri.conf.json` (`plugins.updater.pubkey`). ⚠️ Приватный
-ключ храните в тайне: при его потере автообновление для установленных копий сломается.
+_Подпись кода macOS_ (самоподписанный сертификат — стабильная «личность», чтобы разрешения
+macOS не слетали при обновлениях; CI сам добавляет ему trust):
+- `APPLE_CERTIFICATE` — `.p12` в base64;
+- `APPLE_CERTIFICATE_PASSWORD` — пароль `.p12`;
+- `APPLE_SIGNING_IDENTITY` — Common Name сертификата (напр. `SpeakAgent`);
+- `KEYCHAIN_PASSWORD` — любой пароль для временного keychain в CI.
+
+⚠️ Приватные ключи/сертификаты храните в тайне. Без macOS-секретов сборка идёт без подписи
+(ad-hoc) — работает, но разрешения будут сбрасываться на каждом обновлении. Для полностью
+бесшовного запуска (без предупреждений Gatekeeper) нужен платный Apple Developer ID + нотаризация.
 
 ## 🛠 Технологии
 

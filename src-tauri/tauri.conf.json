@@ -57,8 +57,7 @@
       "resources/models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx": "models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx"
     },
     "macOS": {
-      "minimumSystemVersion": "11.0",
-      "signingIdentity": "-"
+      "minimumSystemVersion": "11.0"
     }
   }
 }

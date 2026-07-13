@@ -56,13 +56,46 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # macOS: импорт самоподписанного сертификата подписи кода в временный keychain.
+      # Стабильная «личность» (Authority=SpeakAgent) → разрешения (Universal Access /
+      # Input Monitoring) переживают обновления, и Gatekeeper мягче («правый клик → Открыть»
+      # вместо «повреждено»). Сертификат самоподписанный → добавляем ему trust вручную
+      # (tauri-action этого не делает, т.к. рассчитан на доверенные Apple-сертификаты).
+      - name: Import macOS signing certificate
+        if: startsWith(matrix.platform, 'macos')
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            echo "APPLE_CERTIFICATE не задан — сборка без подписи сертификатом (ad-hoc)."
+            exit 0
+          fi
+          KC="$RUNNER_TEMP/app-signing.keychain-db"
+          P12="$RUNNER_TEMP/cert.p12"; CER="$RUNNER_TEMP/cert.pem"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$P12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
+          security import "$P12" -k "$KC" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
+          security find-certificate -c "$APPLE_SIGNING_IDENTITY" -p -a "$KC" > "$CER"
+          security add-trusted-cert -r trustRoot -p codeSign -k "$KC" "$CER"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | sed 's/[",]//g' | xargs)
+          security find-identity -v -p codesigning "$KC"
+
       # tauri-action соберёт фронтенд+бэкенд (beforeBuildCommand скачает вшиваемые модели),
-      # подпишет артефакты обновления и создаст/дополнит GitHub Release + latest.json.
+      # подпишет .app сертификатом (APPLE_SIGNING_IDENTITY) + артефакты обновления и создаст/
+      # дополнит GitHub Release + latest.json.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         with:
           tagName: v__VERSION__
           releaseName: "SpeakAgent v__VERSION__"
