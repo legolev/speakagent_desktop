@@ -1,5 +1,10 @@
 # Third-party notices / Сторонние компоненты
 
+SpeakAgent Desktop
+Copyright 2026 SpeakAgent Desktop
+
+This product includes software developed by third parties, listed below.
+
 SpeakAgent Desktop's own source code is licensed under the **Apache License 2.0**
 (see [`LICENSE.md`](LICENSE.md)). The application builds on, bundles, or downloads at
 runtime the third-party components listed below, each under **its own license**. This
@@ -50,7 +55,7 @@ file is provided for attribution and to make those obligations visible.
 | Компонент | Роль | Лицензия |
 |---|---|---|
 | [llama.cpp / llama-server](https://github.com/ggml-org/llama.cpp) | Движок локальной LLM (sidecar) | MIT |
-| [FFmpeg](https://ffmpeg.org/) (сборка [gyan.dev](https://www.gyan.dev/ffmpeg/builds/)) | Fallback-декод медиа | GPL / LGPL |
+| [FFmpeg](https://ffmpeg.org/) (сборки [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) для Windows, [martin-riedl.de](https://ffmpeg.martin-riedl.de/) для macOS) | Fallback-декод медиа — качается в рантайме, вызывается как отдельный процесс (не бандлится, не линкуется) | GPL |
 
 ## Модели / Models
 
@@ -69,7 +74,7 @@ file is provided for attribution and to make those obligations visible.
 
 | Компонент | Роль | Лицензия |
 |---|---|---|
-| [DejaVu Sans](https://dejavu-fonts.github.io/) | Кириллический шрифт для PDF-экспорта | Bitstream Vera / Public Domain (permissive) |
+| [DejaVu Sans](https://dejavu-fonts.github.io/) | Кириллический шрифт для PDF-экспорта (вшивается в исходники и в каждый экспортируемый PDF) | Bitstream Vera Fonts License (изменения DejaVu — public domain); полный текст: [`src-tauri/fonts/LICENSE`](src-tauri/fonts/LICENSE) |
 
 ---
 

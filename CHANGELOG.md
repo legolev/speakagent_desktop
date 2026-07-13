@@ -1,7 +1,35 @@
 # Changelog
 
-All work to date. The project was built in one intensive session; entries are grouped by
-theme and reference the commit.
+All work to date. Entries are grouped by theme and reference the commit.
+
+## Публичный релиз — английский интерфейс, Apache-2.0, донаты (v0.2.0)
+
+**Английская локализация (RU/EN)** — `e788f4b`. Собственный слой i18n (`src/i18n`):
+пофрагментные словари собираются в `index.ts`, `en` типизирован как `typeof ru` → tsc
+гарантирует полный паритет RU/EN. Хук `useT()` + `tr()`/`getLang()` для не-React утилит; язык
+хранится в настройке `ui_lang` (единый источник правды). Переключатель-глобус в статус-баре
+(справа внизу) и RU|EN в Настройках — вместо старой заглушки «скоро». Промпты «Итогов встречи»
+стали двуязычными: `prompts.rs` получил `*_EN`-константы, `llm.rs::out_lang()` читает `ui_lang` —
+при английском интерфейсе саммари/протоколы/задачи генерируются на английском. Строки
+ошибок/статусов Rust-движка канонизированы в единый английский вариант (маркер отмены —
+`"cancelled"`, связка `llm.rs` ↔ `store/jobs.ts`). Новые команды `ui_language`/`set_ui_language`;
+даты и числа следуют активной локали.
+
+**Публикация проекта (open source)** — `f5c7826`, `32f7b59`, `7f622af`, `0218f36`.
+Релицензирование собственного кода с PolyForm Noncommercial на **Apache-2.0** (LICENSE.md,
+`Cargo.toml`, `package.json`, NOTICE.md, оба README, страница «О приложении»); некоммерческое
+ограничение теперь тянется только от дефолтной модели GigaAM — для коммерции доступны
+пермиссивные модели (Parakeet CC-BY / Whisper MIT). Донаты: Boosty + крипто-адреса BTC/TON в
+README и на странице «О приложении» (`.github/FUNDING.yml`, click-to-copy). Community-файлы:
+SECURITY.md, CODE_OF_CONDUCT.md, `.gitattributes`, шаблоны issue/PR. README переписан: три
+ключевые функции в лид, реальные скриншоты + karaoke-GIF, актуализированные бейджи. Атрибуция:
+добавлен полный текст лицензии шрифтов DejaVu (`src-tauri/fonts/LICENSE`), уточнены метки
+лицензий в NOTICE.md (DejaVu — Bitstream Vera, ffmpeg — GPL, self-attribution заголовок).
+
+**CI** — `ba993ed`. Убран `security add-trusted-cert` из шага macOS-подписи: в headless-раннере
+он вызывает GUI-запрос авторизации и вешает джоб (4+ часа), лишая Intel-сборку слота. Для
+`codesign` доверие сертификату не нужно — хватает приватного ключа в keychain (identity видна в
+`find-identity -v -p codesigning`).
 
 ## Диктовка, локальный MCP-сервер, трей и авто-обновление
 
@@ -207,6 +235,8 @@ no side dylibs" property holds (`otool -L` shows only `/usr/lib/libc++`).
 
 ## Next
 
-Deferred: **code signing + notarization** (needs an Apple Developer account) for distribution
-beyond a local machine; Intel/universal binary (arm64-only ships today); auto-update, batch
-processing.
+Deferred: **notarization** (needs a paid Apple Developer account) for smoother Gatekeeper on
+macOS; a universal (fat) macOS binary — arm64 and Intel currently ship as separate DMGs.
+
+_(Already shipped: auto-update, self-signed macOS code signing, the multi-file transcription
+queue, and the macOS Intel build.)_
