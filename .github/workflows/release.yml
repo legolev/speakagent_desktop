@@ -24,16 +24,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-14 # Apple Silicon (arm64)
+          - platform: macos-14 # Apple Silicon (arm64) — нативно
             target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
-          - platform: macos-13 # Intel (x86_64)
+          # Intel собираем КРОСС-компиляцией на arm64-раннере macos-14: нативные Intel-раннеры
+          # (macos-13) дефицитны и выводятся из строя → джоб зависал в очереди часами.
+          - platform: macos-14 # Intel (x86_64) — кросс-компиляция
             target: x86_64-apple-darwin
             args: "--target x86_64-apple-darwin"
+            experimental: true # best-effort: провал/зависание НЕ блокирует релиз
           - platform: windows-latest
             target: ""
             args: ""
     runs-on: ${{ matrix.platform }}
+    # Intel помечен experimental → его провал не роняет релиз (выходит с Win + arm64 —
+    # они обязательные). timeout страхует от зависших джобов.
+    continue-on-error: ${{ matrix.experimental || false }}
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
 
