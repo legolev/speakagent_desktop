@@ -12,6 +12,11 @@ import {
   listResults,
   saveResultText,
   llmDisplayName,
+  llmBeautify,
+  cancelBeautify as apiCancelBeautify,
+  beautifiedText,
+  clearResults,
+  beautifyConfig,
   type Progress,
   type StoredJob,
   type LlmProgress,
@@ -89,6 +94,15 @@ interface JobsState {
   cancelResult: (jobId: string) => void;
   /** Сохранить правку итога (чекбоксы задач). */
   saveResultEdit: (jobId: string, kind: ResultKind, text: string) => void;
+
+  // ── Украшатель (опциональная faithful-очистка расшифровки) ──
+  /** «Обработанный» текст записи: jobId → состояние. */
+  beautified: Record<string, ResultState>;
+  /** Подтянуть сохранённый обработанный текст из SQLite (при открытии). */
+  hydrateBeautified: (jobId: string) => Promise<void>;
+  /** Запустить обработку (украшение) текста записи. */
+  beautify: (jobId: string) => void;
+  cancelBeautify: (jobId: string) => void;
 }
 
 let counter = 0;
@@ -138,6 +152,7 @@ export const useJobs = create<JobsState>((set, get) => ({
   jobs: [],
   queue: [],
   results: {},
+  beautified: {},
 
   hydrate: async () => {
     try {
@@ -221,6 +236,14 @@ export const useJobs = create<JobsState>((set, get) => ({
         patch({ status: "done", text, partial: text, stage: "done" });
         const j = get().jobs.find((x) => x.id === id);
         if (j) saveJob(toStored({ ...j, status: "done", text })).catch(() => {});
+        // авто-украшатель: только если включён и очередь пуста (не задерживаем другие файлы)
+        if (text.trim() && get().queue.length === 0) {
+          beautifyConfig()
+            .then((cfg) => {
+              if (cfg.enabled && cfg.auto && get().queue.length === 0) get().beautify(id);
+            })
+            .catch(() => {});
+        }
       })
       .catch((e) => {
         const error = String(e);
@@ -243,6 +266,17 @@ export const useJobs = create<JobsState>((set, get) => ({
     if (s.jobs.some((j) => j.status === "running")) return; // занято — кнопка будет отключена
     const job = s.jobs.find((j) => j.id === id);
     if (!job) return;
+
+    // Старые артефакты (итоги/дайджест/обработанный текст) относятся к прежнему ASR-проходу
+    // и после перераспознавания больше не валидны — чистим и на бэке, и в сторе.
+    clearResults(id).catch(() => {});
+    set((st) => {
+      const results = { ...st.results };
+      delete results[id];
+      const beautified = { ...st.beautified };
+      delete beautified[id];
+      return { results, beautified };
+    });
 
     const patch = (p: Partial<Job>) =>
       set((st) => ({ jobs: st.jobs.map((j) => (j.id === id ? { ...j, ...p } : j)) }));
@@ -314,13 +348,15 @@ export const useJobs = create<JobsState>((set, get) => ({
     set((s) => {
       const results = { ...s.results };
       delete results[id];
-      return { jobs: s.jobs.filter((j) => j.id !== id), results };
+      const beautified = { ...s.beautified };
+      delete beautified[id];
+      return { jobs: s.jobs.filter((j) => j.id !== id), results, beautified };
     });
     deleteJob(id).catch(() => {});
   },
 
   clear: () => {
-    set({ jobs: [], results: {} });
+    set({ jobs: [], results: {}, beautified: {} });
     clearJobs().catch(() => {});
   },
 
@@ -397,5 +433,46 @@ export const useJobs = create<JobsState>((set, get) => ({
       return { results: { ...s.results, [jobId]: { ...cur, [kind]: { ...prev, text } } } };
     });
     saveResultText(jobId, kind, text).catch(() => {});
+  },
+
+  // ── Украшатель (faithful-очистка) ──
+
+  hydrateBeautified: async (jobId) => {
+    if (get().beautified[jobId]?.status === "running") return;
+    try {
+      const text = await beautifiedText(jobId);
+      if (!text) return;
+      set((s) => ({
+        beautified: { ...s.beautified, [jobId]: { status: "done", done: 0, total: 0, text } },
+      }));
+    } catch {
+      /* нет обработанного текста — не критично */
+    }
+  },
+
+  beautify: (jobId) => {
+    const patch = (p: Partial<ResultState>) =>
+      set((s) => {
+        const prev: ResultState = s.beautified[jobId] ?? { status: "idle", done: 0, total: 0 };
+        return { beautified: { ...s.beautified, [jobId]: { ...prev, ...p } } };
+      });
+
+    patch({ status: "running", stage: "starting", done: 0, total: 0, partial: "", error: undefined });
+
+    const channel = new Channel<LlmProgress>();
+    channel.onmessage = (p) =>
+      patch({ stage: p.stage, done: p.done, total: p.total, partial: p.partial });
+
+    llmBeautify(jobId, channel)
+      .then((text) => patch({ status: "done", text, partial: undefined }))
+      .catch((e) => {
+        const msg = String(e);
+        if (msg.includes("cancelled")) patch({ status: "idle", partial: undefined });
+        else patch({ status: "error", error: msg, partial: undefined });
+      });
+  },
+
+  cancelBeautify: (jobId) => {
+    apiCancelBeautify(jobId).catch(() => {});
   },
 }));

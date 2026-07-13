@@ -2,6 +2,7 @@ import { ShieldCheck, Wand2, FolderOpen, Globe } from "lucide-react";
 import { openDataDir } from "../lib/api";
 import ModelSelector from "../components/ModelSelector";
 import AiProvider from "../components/AiProvider";
+import BeautifySettings from "../components/BeautifySettings";
 import { useUi } from "../store/ui";
 import { useT, useLang } from "../i18n";
 
@@ -41,6 +42,12 @@ export default function SettingsPage() {
       </h2>
       <p className="mt-1 text-sm text-zinc-400">{t.settings.aiFeaturesHint}</p>
       <AiProvider />
+
+      <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
+        {t.beautify.settingsTitle}
+      </h2>
+      <p className="mt-1 text-sm text-zinc-400">{t.beautify.settingsHint}</p>
+      <BeautifySettings />
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
         {t.settings.interfaceLanguage}

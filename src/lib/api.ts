@@ -175,6 +175,24 @@ export const llmDisplayName = (jobId: string) => invoke<string>("llm_display_nam
 export const activeLlmModel = () => invoke<string>("active_llm_model");
 export const setActiveLlmModel = (id: string) => invoke<void>("set_active_llm_model", { id });
 
+// ── Украшатель (опциональная faithful-очистка расшифровки) ──
+export interface BeautifyConfig {
+  enabled: boolean;
+  auto: boolean;
+}
+export const beautifyConfig = () => invoke<BeautifyConfig>("beautify_config");
+export const setBeautifyConfig = (config: BeautifyConfig) =>
+  invoke<void>("set_beautify_config", { config });
+/** Прогнать расшифровку через LLM-украшатель; «обработанный» текст сохраняется на бэке. */
+export const llmBeautify = (jobId: string, onProgress: Channel<LlmProgress>) =>
+  invoke<string>("llm_beautify", { jobId, onProgress });
+export const cancelBeautify = (jobId: string) => invoke<void>("cancel_beautify", { jobId });
+/** «Обработанный» текст записи, если он уже строился (иначе null). */
+export const beautifiedText = (jobId: string) =>
+  invoke<string | null>("beautified_text", { jobId });
+/** Удалить все артефакты записи (при «Расшифровать заново»). */
+export const clearResults = (jobId: string) => invoke<void>("clear_results", { jobId });
+
 // ── ИИ-провайдер: локальный движок ↔ облако (OpenAI-совместимое) ──
 export type LlmBackend = "local" | "cloud";
 export interface CloudConfig {
