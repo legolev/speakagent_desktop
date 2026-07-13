@@ -558,6 +558,92 @@ fn save_result_text(job_id: String, kind: String, text: String) -> Result<(), St
     })
 }
 
+/// Прогнать расшифровку через LLM-украшатель (опциональная faithful-очистка орфографии,
+/// пунктуации и очевидных ослышек без изменения смысла). Результат — «обработанный» текст
+/// той же формы; кэшируется в job_results kind='beautified'. Медленно на CPU → по кнопке.
+#[tauri::command]
+async fn llm_beautify(
+    job_id: String,
+    on_progress: tauri::ipc::Channel<LlmProgress>,
+) -> Result<String, String> {
+    let cancel = Arc::new(AtomicBool::new(false));
+    let ckey = format!("beautify:{job_id}");
+    cancels().lock().unwrap().insert(ckey.clone(), cancel.clone());
+
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        let job = engine::store::get(&job_id).ok_or("recording not found in history")?;
+        if job.text.trim().is_empty() {
+            return Err("recording has no text".into());
+        }
+        // Обрабатываем СЫРОЙ текст со «SpeakerN» (не подставляем имена): «обработанный» текст
+        // рендерится через ту же карту имён, что и оригинал, и остаётся переименуемым.
+        let text = engine::llm::beautify(&job.text, &cancel, |p| {
+            let _ = on_progress.send(LlmProgress {
+                stage: p.stage.into(),
+                done: p.done,
+                total: p.total,
+                partial: p.partial,
+            });
+        })?;
+        engine::store::save_result(&engine::store::JobResult {
+            job_id,
+            kind: "beautified".into(),
+            text: text.clone(),
+            model: engine::models::active_llm_id(),
+            created_at: now_ms(),
+        })?;
+        Ok::<String, String>(text)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    cancels().lock().unwrap().remove(&ckey);
+    out
+}
+
+/// Отменить украшение записи.
+#[tauri::command]
+fn cancel_beautify(job_id: String) {
+    if let Some(f) = cancels().lock().unwrap().get(&format!("beautify:{job_id}")) {
+        f.store(true, Ordering::Relaxed);
+    }
+}
+
+/// «Обработанный» текст записи, если он уже строился (иначе null).
+#[tauri::command]
+fn beautified_text(job_id: String) -> Option<String> {
+    engine::store::beautified_for(&job_id)
+}
+
+/// Удалить все артефакты записи (саммари/дайджест/обработанный) — при «Расшифровать заново».
+#[tauri::command]
+fn clear_results(job_id: String) -> Result<(), String> {
+    engine::store::clear_results(&job_id)
+}
+
+/// Настройки украшателя: мастер-тумблер и авто-запуск после расшифровки (оба выкл по умолчанию).
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BeautifyConfig {
+    enabled: bool,
+    auto: bool,
+}
+
+#[tauri::command]
+fn beautify_config() -> BeautifyConfig {
+    BeautifyConfig {
+        enabled: get_bool("beautify_enabled", false),
+        auto: get_bool("beautify_auto", false),
+    }
+}
+
+#[tauri::command]
+fn set_beautify_config(config: BeautifyConfig) -> Result<(), String> {
+    engine::store::set_setting("beautify_enabled", if config.enabled { "1" } else { "0" })?;
+    engine::store::set_setting("beautify_auto", if config.auto { "1" } else { "0" })?;
+    Ok(())
+}
+
 /// Готовый запрос для внешнего ИИ: промпт + расшифровка (с именами спикеров).
 /// Запасной путь для слабых машин — пользователь копирует и несёт в любой ИИ-чат.
 #[tauri::command]
@@ -1547,6 +1633,12 @@ pub fn run() {
             cancel_llm,
             list_results,
             save_result_text,
+            llm_beautify,
+            cancel_beautify,
+            beautified_text,
+            clear_results,
+            beautify_config,
+            set_beautify_config,
             llm_export_prompt,
             llm_display_name,
             active_llm_model,

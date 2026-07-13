@@ -202,13 +202,13 @@ pub fn save_result(r: &JobResult) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// Артефакты записи для UI ('digest' — служебный, не отдаём).
+/// Артефакты записи для UI ('digest' и 'beautified' — служебные, отдаются отдельно).
 pub fn results_for(job_id: &str) -> Result<Vec<JobResult>, String> {
     let c = conn()?;
     let mut stmt = c
         .prepare(
             "SELECT job_id, kind, text, model, created_at FROM job_results
-             WHERE job_id = ?1 AND kind != 'digest' ORDER BY created_at",
+             WHERE job_id = ?1 AND kind NOT IN ('digest', 'beautified') ORDER BY created_at",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
@@ -234,6 +234,26 @@ pub fn digest_for(job_id: &str) -> Option<String> {
         |r| r.get(0),
     )
     .ok()
+}
+
+/// «Обработанный» (украшенный) текст расшифровки, если он уже строился.
+pub fn beautified_for(job_id: &str) -> Option<String> {
+    let c = conn().ok()?;
+    c.query_row(
+        "SELECT text FROM job_results WHERE job_id = ?1 AND kind = 'beautified'",
+        [job_id],
+        |r| r.get(0),
+    )
+    .ok()
+}
+
+/// Удалить все артефакты записи (саммари/дайджест/украшенный текст) — напр. при
+/// «Расшифровать заново», чтобы старые артефакты не оставались от прежнего ASR-прохода.
+pub fn clear_results(job_id: &str) -> Result<(), String> {
+    conn()?
+        .execute("DELETE FROM job_results WHERE job_id = ?1", [job_id])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 // ── Диктовка (быстрые распознавания) ──

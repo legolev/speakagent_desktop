@@ -171,6 +171,7 @@ pub fn cloud_test(url: &str, model: &str, key: &str) -> Result<String, String> {
         key,
         "Ты проверяешь связь. Ответь коротко.",
         "Ответь одним словом: ок",
+        0.4,
         8,
         &cancel,
     )?;
@@ -184,6 +185,7 @@ fn cloud_chat(
     key: &str,
     system: &str,
     user: &str,
+    temperature: f32,
     max_tokens: u32,
     cancel: &AtomicBool,
 ) -> Result<String, String> {
@@ -197,7 +199,7 @@ fn cloud_chat(
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.4,
+        "temperature": temperature,
         "max_tokens": max_tokens,
     });
     let resp = ureq::post(&endpoint)
@@ -394,6 +396,7 @@ fn chat_stream(
     port: u16,
     system: &str,
     user: &str,
+    temperature: f32,
     max_tokens: u32,
     cancel: &AtomicBool,
     mut on_token: impl FnMut(&str),
@@ -404,8 +407,9 @@ fn chat_stream(
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        // сэмплинг по карточке Qwen (более низкие температуры зацикливают 4B)
-        "temperature": 0.7,
+        // температуру задаёт вызывающий: саммари — 0.7 (низкие зацикливают 4B),
+        // украшатель — ниже (задача копирующая, зацикливания нет).
+        "temperature": temperature,
         "top_p": 0.8,
         "max_tokens": max_tokens,
         "stream": true,
@@ -447,6 +451,7 @@ fn chat_retry(
     port: u16,
     system: &str,
     user: &str,
+    temperature: f32,
     max_tokens: u32,
     cancel: &AtomicBool,
     mut on_token: impl FnMut(&str),
@@ -457,7 +462,7 @@ fn chat_retry(
             std::thread::sleep(Duration::from_secs(2));
             let _ = ensure_server(); // сервер мог упасть — поднимем
         }
-        match chat_stream(port, system, user, max_tokens, cancel, &mut on_token) {
+        match chat_stream(port, system, user, temperature, max_tokens, cancel, &mut on_token) {
             Ok(s) => return Ok(s),
             Err(e) if e == CANCELLED => return Err(e),
             Err(e) => last = e,
@@ -532,7 +537,7 @@ pub fn generate(
     if let Some((url, model, key)) = cloud_config() {
         on(Progress { stage: "writing", done: 0, total: 0, partial: String::new() });
         let input = truncate_chars(transcript, 240_000);
-        let text = cloud_chat(&url, &model, &key, kind.prompt(lang), &input, kind.max_tokens() + 512, cancel)?;
+        let text = cloud_chat(&url, &model, &key, kind.prompt(lang), &input, 0.4, kind.max_tokens() + 512, cancel)?;
         return Ok(GenOutput { text, digest: None });
     }
 
@@ -565,7 +570,7 @@ pub fn generate(
             return Err(CANCELLED.into());
         }
         on(Progress { stage: "reading", done: i as u32, total, partial: String::new() });
-        match chat_retry(port, chunk_prompt, chunk, 700, cancel, |_| {}) {
+        match chat_retry(port, chunk_prompt, chunk, 0.7, 700, cancel, |_| {}) {
             Ok(s) => parts.push(s),
             Err(e) if e == CANCELLED => return Err(e),
             Err(_) => parts.push(truncate_chars(chunk, 1400)), // фолбэк облака: сырой кусок
@@ -589,10 +594,252 @@ fn final_call(
     on: &mut impl FnMut(Progress),
 ) -> Result<String, String> {
     let mut acc = String::new();
-    chat_retry(port, kind.prompt(lang), input, kind.max_tokens(), cancel, |tok| {
+    chat_retry(port, kind.prompt(lang), input, 0.7, kind.max_tokens(), cancel, |tok| {
         acc.push_str(tok);
         on(Progress { stage: "writing", done: 0, total: 0, partial: acc.clone() });
     })
+}
+
+// ─────────────────────────── Украшатель (faithful cleanup) ───────────────────────────
+
+/// Размер батча/куска украшателя (символы). Меньше, чем у саммари: выход украшателя
+/// ≈ длине входа и должен уместиться в потолок max_tokens.
+const BEAUTIFY_CHUNK_CHARS: usize = 3500;
+
+/// Потолок ответа украшателя для входа в `input_chars` символов (выход ≈ вход).
+fn beautify_max_tokens(input_chars: usize) -> u32 {
+    ((input_chars as f32 / CHARS_PER_TOKEN * 1.4).ceil() as u32).clamp(64, 3072)
+}
+
+/// Снять ведущий номер «N. » / «N) » / «N:» / «N\t» из строки ответа (иначе — вернуть как есть).
+fn strip_num_prefix(s: &str) -> &str {
+    let t = s.trim_start();
+    let ndigits = t.chars().take_while(|c| c.is_ascii_digit()).count();
+    if ndigits == 0 {
+        return s.trim();
+    }
+    let after = &t[ndigits..];
+    for sep in [". ", ".", ") ", ")", ": ", ":", "\t", " - ", "- "] {
+        if let Some(rest) = after.strip_prefix(sep) {
+            return rest.trim_start();
+        }
+    }
+    s.trim()
+}
+
+/// Разбить плоский текст на куски ≤ max_chars по границам слов (без разрыва слов).
+fn split_words(text: &str, max_chars: usize) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    for word in text.split_whitespace() {
+        if !cur.is_empty() && cur.chars().count() + word.chars().count() + 1 > max_chars {
+            out.push(std::mem::take(&mut cur));
+        }
+        if !cur.is_empty() {
+            cur.push(' ');
+        }
+        cur.push_str(word);
+    }
+    if !cur.trim().is_empty() {
+        out.push(cur);
+    }
+    out
+}
+
+/// Один запрос украшателя к активному движку (облако или локальный llama-server) на низкой
+/// температуре — задача копирующая, детерминизм важнее «креатива».
+fn beautify_call(
+    cloud: Option<&(String, String, String)>,
+    port: Option<u16>,
+    system: &str,
+    user: &str,
+    max_tokens: u32,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
+    match cloud {
+        Some((url, model, key)) => {
+            cloud_chat(url, model, key, system, user, 0.2, max_tokens, cancel)
+        }
+        None => {
+            let port = port.ok_or("local engine not started")?;
+            chat_retry(port, system, user, 0.2, max_tokens, cancel, |_| {})
+        }
+    }
+}
+
+/// Опциональная faithful-очистка расшифровки выбранной LLM: правит орфографию, пунктуацию
+/// и очевидные ослышки, НЕ меняя смысла и дословности. Диаризованный текст обрабатывается
+/// по-реплично (префиксы «Speaker N [ts]: » и таймкоды сохраняются побайтово), плоский —
+/// кусками. Выход имеет ту же форму, что и вход. Правка недеструктивна: при расхождении
+/// числа строк или неправдоподобной длине реплика/кусок откатывается к оригиналу.
+pub fn beautify(
+    raw_text: &str,
+    cancel: &AtomicBool,
+    mut on: impl FnMut(Progress),
+) -> Result<String, String> {
+    on(Progress { stage: "starting", done: 0, total: 0, partial: String::new() });
+    let lang = out_lang();
+    let cloud = cloud_config();
+    // локальный движок поднимаем один раз (порт переиспользуется всеми батчами)
+    let port = if cloud.is_none() { Some(ensure_server()?) } else { None };
+    let is_diarized = raw_text.lines().any(|l| l.trim_start().starts_with("Speaker"));
+    if is_diarized {
+        beautify_diarized(raw_text, lang, cloud.as_ref(), port, cancel, &mut on)
+    } else {
+        beautify_plain(raw_text, lang, cloud.as_ref(), port, cancel, &mut on)
+    }
+}
+
+/// Диаризованный путь: чистим тела реплик батчами, структуру «SpeakerN [ts]:» не трогаем.
+fn beautify_diarized(
+    raw_text: &str,
+    lang: Lang,
+    cloud: Option<&(String, String, String)>,
+    port: Option<u16>,
+    cancel: &AtomicBool,
+    on: &mut impl FnMut(Progress),
+) -> Result<String, String> {
+    let system = match lang {
+        Lang::Ru => prompts::BEAUTIFY_TURNS,
+        Lang::En => prompts::BEAUTIFY_TURNS_EN,
+    };
+
+    // Строка → (префикс, тело). Реплика: тело непусто. Прочее (пустые/непарсимые) — passthrough.
+    struct Ln {
+        prefix: String,
+        body: String,
+    }
+    let mut lines: Vec<Ln> = Vec::new();
+    for raw in raw_text.lines() {
+        let mut parsed: Option<Ln> = None;
+        if raw.trim_start().starts_with("Speaker") {
+            if let Some(cut) = raw.find("]:") {
+                let body = raw[cut + 2..].trim_start();
+                if !body.is_empty() {
+                    let plen = raw.len() - body.len(); // тело — суффикс строки
+                    parsed = Some(Ln {
+                        prefix: raw[..plen].to_string(),
+                        body: body.to_string(),
+                    });
+                }
+            }
+        }
+        lines.push(parsed.unwrap_or_else(|| Ln {
+            prefix: raw.to_string(),
+            body: String::new(),
+        }));
+    }
+
+    let turn_idx: Vec<usize> = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, l)| !l.body.is_empty())
+        .map(|(i, _)| i)
+        .collect();
+    if turn_idx.is_empty() {
+        return Ok(raw_text.to_string());
+    }
+
+    // Группируем реплики в батчи по бюджету символов.
+    let mut batches: Vec<Vec<usize>> = Vec::new();
+    let mut cur: Vec<usize> = Vec::new();
+    let mut cur_chars = 0usize;
+    for &i in &turn_idx {
+        let c = lines[i].body.chars().count() + 8; // +номер/перевод строки
+        if !cur.is_empty() && cur_chars + c > BEAUTIFY_CHUNK_CHARS {
+            batches.push(std::mem::take(&mut cur));
+            cur_chars = 0;
+        }
+        cur.push(i);
+        cur_chars += c;
+    }
+    if !cur.is_empty() {
+        batches.push(cur);
+    }
+
+    let total = batches.len() as u32;
+    for (bi, batch) in batches.iter().enumerate() {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(CANCELLED.into());
+        }
+        on(Progress { stage: "reading", done: bi as u32, total, partial: String::new() });
+
+        let user = batch
+            .iter()
+            .enumerate()
+            .map(|(k, &i)| format!("{}. {}", k + 1, lines[i].body))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mt = beautify_max_tokens(user.chars().count());
+        let reply = beautify_call(cloud, port, system, &user, mt, cancel)?;
+
+        // Снять номера, отфильтровать пустые, сопоставить по позиции.
+        let got: Vec<String> = reply
+            .lines()
+            .map(|l| strip_num_prefix(l).to_string())
+            .filter(|l| !l.trim().is_empty())
+            .collect();
+        // Число строк должно совпасть — иначе модель склеила/выкинула реплики → откат батча.
+        if got.len() == batch.len() {
+            for (k, &i) in batch.iter().enumerate() {
+                let orig_len = lines[i].body.chars().count().max(1);
+                let ratio = got[k].chars().count() as f32 / orig_len as f32;
+                if (0.5..=2.0).contains(&ratio) {
+                    lines[i].body = got[k].trim().to_string();
+                }
+            }
+        }
+    }
+    on(Progress { stage: "reading", done: total, total, partial: String::new() });
+
+    Ok(lines
+        .iter()
+        .map(|l| {
+            if l.body.is_empty() {
+                l.prefix.clone()
+            } else {
+                format!("{}{}", l.prefix, l.body)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n"))
+}
+
+/// Плоский путь: недиаризованный текст чистим кусками по границам слов, склеиваем.
+fn beautify_plain(
+    raw_text: &str,
+    lang: Lang,
+    cloud: Option<&(String, String, String)>,
+    port: Option<u16>,
+    cancel: &AtomicBool,
+    on: &mut impl FnMut(Progress),
+) -> Result<String, String> {
+    let system = match lang {
+        Lang::Ru => prompts::BEAUTIFY_PLAIN,
+        Lang::En => prompts::BEAUTIFY_PLAIN_EN,
+    };
+    let chunks = split_words(raw_text, BEAUTIFY_CHUNK_CHARS);
+    if chunks.is_empty() {
+        return Ok(raw_text.to_string());
+    }
+    let total = chunks.len() as u32;
+    let mut out: Vec<String> = Vec::with_capacity(chunks.len());
+    for (ci, chunk) in chunks.iter().enumerate() {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(CANCELLED.into());
+        }
+        on(Progress { stage: "reading", done: ci as u32, total, partial: String::new() });
+        let mt = beautify_max_tokens(chunk.chars().count());
+        let cleaned = beautify_call(cloud, port, system, chunk, mt, cancel)?;
+        let ratio = cleaned.chars().count() as f32 / chunk.chars().count().max(1) as f32;
+        if (0.5..=2.0).contains(&ratio) && !cleaned.trim().is_empty() {
+            out.push(cleaned.trim().to_string());
+        } else {
+            out.push(chunk.clone());
+        }
+    }
+    on(Progress { stage: "reading", done: total, total, partial: String::new() });
+    Ok(out.join(" "))
 }
 
 /// Короткое название записи по началу расшифровки (авто-переименование в истории).
@@ -604,7 +851,7 @@ pub fn display_name(transcript: &str, cancel: &AtomicBool) -> Result<String, Str
     };
     let port = ensure_server()?;
     let input = truncate_chars(transcript, 2000);
-    let name = chat_retry(port, name_prompt, &input, 32, cancel, |_| {})?;
+    let name = chat_retry(port, name_prompt, &input, 0.7, 32, cancel, |_| {})?;
     Ok(name.trim().trim_matches('"').trim_matches('«').trim_matches('»').to_string())
 }
 
