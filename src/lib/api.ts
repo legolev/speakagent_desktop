@@ -256,6 +256,8 @@ export interface PermissionsStatus {
 export const permissionsStatus = () => invoke<PermissionsStatus>("permissions_status");
 export const requestPermission = (kind: "accessibility" | "input-monitoring") =>
   invoke<void>("request_permission", { kind });
+/** Починка разрешений после обновления (сброс застрявших TCC-записей + повторный запрос). */
+export const repairPermissions = () => invoke<void>("repair_permissions");
 
 // ── Локальный MCP-сервер ──
 export interface McpStatus {

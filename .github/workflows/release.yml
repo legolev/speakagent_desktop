@@ -73,8 +73,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${APPLE_CERTIFICATE:-}" ]; then
-            echo "APPLE_CERTIFICATE не задан — сборка без подписи сертификатом (ad-hoc)."
-            exit 0
+            echo "::error::APPLE_CERTIFICATE не задан. Отказ: ad-hoc-подпись даёт cdhash-Designated-Requirement, который меняется каждую сборку → TCC-разрешения диктовки (Input Monitoring/Accessibility) слетают при КАЖДОМ обновлении. Задайте секреты APPLE_CERTIFICATE/_PASSWORD/APPLE_SIGNING_IDENTITY/KEYCHAIN_PASSWORD."
+            exit 1
           fi
           KC="$RUNNER_TEMP/app-signing.keychain-db"
           P12="$RUNNER_TEMP/cert.p12"
@@ -114,3 +114,21 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Страховка: сборка НЕ должна быть ad-hoc. Ad-hoc → Designated Requirement по cdhash,
+      # который меняется каждую сборку → TCC-разрешения диктовки слетают при каждом обновлении
+      # (и переключатель в Настройках не помогает). Стабильная (само)подпись даёт DR по leaf-hash.
+      - name: Assert macOS build is not ad-hoc signed
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          set -uo pipefail
+          APP=$(find src-tauri/target -maxdepth 6 -name 'SpeakAgent.app' -type d | head -1)
+          if [ -z "$APP" ]; then echo "SpeakAgent.app не найден — пропуск проверки."; exit 0; fi
+          echo "Проверяю подпись: $APP"
+          INFO=$(codesign -dvvv "$APP" 2>&1 || true)
+          echo "$INFO"
+          if echo "$INFO" | grep -q 'Signature=adhoc'; then
+            echo "::error::Приложение подписано ad-hoc — TCC-разрешения диктовки будут слетать при каждом обновлении. Проверьте APPLE_SIGNING_IDENTITY и что сертификат применился."
+            exit 1
+          fi
+          echo "OK: подпись не ad-hoc (Designated Requirement стабилен между сборками)."

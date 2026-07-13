@@ -36,6 +36,9 @@ const ru = {
   permAccessDesc: "для авто-вставки распознанного текста на курсор",
   permGranted: "выдано",
   permRequest: "Запросить",
+  repairHint:
+    "Разрешения слетели после обновления и переключение в Настройках не помогает? Нажмите — приложение сбросит застрявшие системные записи и запросит доступ заново. (Причина: пока приложение без платной подписи Apple, macOS считает каждое обновление «новым приложением».)",
+  repairBtn: "Восстановить разрешения",
 
   // История.
   historyTitle: "История диктовок",
@@ -99,6 +102,9 @@ const en: T = {
   permAccessDesc: "for auto-pasting the recognized text at the cursor",
   permGranted: "granted",
   permRequest: "Request",
+  repairHint:
+    "Permissions reset after an update and toggling them in Settings doesn't help? Click — the app resets the stuck system records and re-requests access. (Cause: until the app has a paid Apple signature, macOS treats each update as a “new app”.)",
+  repairBtn: "Repair permissions",
 
   historyTitle: "Dictation history",
   searchPlaceholder: "Search text…",

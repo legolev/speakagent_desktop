@@ -16,6 +16,7 @@ import {
   Radio,
   ShieldCheck,
   ShieldAlert,
+  Wrench,
 } from "lucide-react";
 import {
   dictationConfig,
@@ -26,6 +27,7 @@ import {
   listModels,
   permissionsStatus,
   requestPermission,
+  repairPermissions,
   type DictationConfig,
 } from "../lib/api";
 import { useDictation } from "../store/dictation";
@@ -345,6 +347,15 @@ export default function DictationPage() {
             desc={t.dictation.permAccessDesc}
             onRequest={() => requestPermission("accessibility")}
           />
+          <div className="mt-2 border-t border-white/5 pt-2.5">
+            <p className="text-[11px] leading-relaxed text-zinc-600">{t.dictation.repairHint}</p>
+            <button
+              onClick={() => repairPermissions().catch(() => {})}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-500/20"
+            >
+              <Wrench size={13} /> {t.dictation.repairBtn}
+            </button>
+          </div>
         </div>
       )}
 

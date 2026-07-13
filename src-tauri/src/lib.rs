@@ -1368,6 +1368,37 @@ fn request_permission(kind: String) -> Result<(), String> {
     }
 }
 
+/// Починка разрешений диктовки после обновления. Причина проблемы: без платной подписи
+/// Apple Developer ID приложение подписано ad-hoc/самоподписью, и Designated Requirement
+/// подписи меняется между сборками → macOS считает обновление «новым приложением» и
+/// TCC-гранты (Input Monitoring / Accessibility / Microphone) слетают. При этом
+/// переключатель в System Settings НЕ помогает: остаётся застрявшая запись в TCC.db,
+/// чей csreq больше не сходится. Единственное надёжное лекарство — сбросить запись
+/// (`tccutil reset <service> <bundle-id>`) и запросить заново. На не-macOS — no-op.
+#[tauri::command]
+fn repair_permissions() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        const BUNDLE: &str = "pro.speakagent.desktop";
+        // ListenEvent = «Мониторинг ввода». Сбрасываем застрявшие гранты best-effort:
+        // для системных сервисов reset может требовать прав — ошибку глотаем (ниже —
+        // повторный системный запрос, который создаст свежую запись).
+        for svc in ["Accessibility", "ListenEvent", "Microphone"] {
+            let _ = std::process::Command::new("tccutil")
+                .args(["reset", svc, BUNDLE])
+                .status();
+        }
+        macperms::prompt_input_monitoring();
+        macperms::prompt_accessibility();
+        open_privacy_settings("Privacy_ListenEvent");
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(())
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn open_privacy_settings(anchor: &str) {
     let url = format!("x-apple.systempreferences:com.apple.preference.security?{anchor}");
@@ -1665,6 +1696,7 @@ pub fn run() {
             clear_dictations,
             permissions_status,
             request_permission,
+            repair_permissions,
             mcp_status,
             mcp_config,
             mcp_start,
