@@ -12,6 +12,7 @@ import {
   type SystemInfo,
   type DlProgress,
 } from "../lib/api";
+import { useT } from "../i18n";
 
 /** Насколько модель подходит под железо этого компьютера. */
 type Fit = "good" | "ok" | "heavy";
@@ -19,7 +20,11 @@ type Fit = "good" | "ok" | "heavy";
 /** Оценка пригодности модели: память (модель в RAM + запас), тяжесть на CPU и общий
  *  класс машины. Наличие ускорителя (Apple Silicon / дискретная видеокарта) считаем
  *  признаком сильной машины — тяжёлые модели на ней комфортнее. */
-function modelFit(m: ModelInfo, sys: SystemInfo): { level: Fit; note: string } {
+function modelFit(
+  m: ModelInfo,
+  sys: SystemInfo,
+  t: ReturnType<typeof useT>,
+): { level: Fit; note: string } {
   // Сколько примерно занимает в памяти (ГБ) — по факту распаковки, не по размеру архива.
   const ramNeedGb: Record<string, number> = {
     gigaam: 0.7,
@@ -31,7 +36,7 @@ function modelFit(m: ModelInfo, sys: SystemInfo): { level: Fit; note: string } {
 
   // Не хватает памяти под модель + рабочий запас → тяжело при любом раскладе.
   if (sys.ramTotalGb < need + 1.5) {
-    return { level: "heavy", note: "мало оперативной памяти" };
+    return { level: "heavy", note: t.modelSelector.noteLowRam };
   }
 
   // Сильная машина: есть ускоритель (GPU/Apple Silicon) ИЛИ быстрый многоядерный CPU.
@@ -41,43 +46,52 @@ function modelFit(m: ModelInfo, sys: SystemInfo): { level: Fit; note: string } {
   if (m.id === "whisper-turbo") {
     // large-v3-turbo тяжёлый: на сильной машине приемлемо, на слабой — очень медленно.
     return strong
-      ? { level: "ok", note: "самая точная, но помедленнее" }
-      : { level: "heavy", note: "очень медленно на этом процессоре" };
+      ? { level: "ok", note: t.modelSelector.noteMostAccurateSlower }
+      : { level: "heavy", note: t.modelSelector.noteVerySlowCpu };
   }
   if (m.id === "whisper-small" || m.id === "parakeet") {
-    if (sys.speed === "slow" && !strong) return { level: "heavy", note: "будет медленно" };
-    return strong ? { level: "good", note: "" } : { level: "ok", note: "чуть медленнее" };
+    if (sys.speed === "slow" && !strong) return { level: "heavy", note: t.modelSelector.noteWillBeSlow };
+    return strong
+      ? { level: "good", note: "" }
+      : { level: "ok", note: t.modelSelector.noteSlightlySlower };
   }
   // GigaAM — лёгкая CTC-модель, идёт почти на любом железе.
   return { level: "good", note: "" };
 }
 
-const FIT_UI: Record<Fit, { dot: string; label: string; text: string }> = {
-  good: { dot: "bg-emerald-500", label: "Хорошо подойдёт", text: "text-emerald-400/90" },
-  ok: { dot: "bg-amber-500", label: "Подойдёт", text: "text-amber-400/90" },
-  heavy: { dot: "bg-red-500", label: "Тяжело для этого ПК", text: "text-red-400/90" },
+const FIT_UI: Record<Fit, { dot: string; text: string }> = {
+  good: { dot: "bg-emerald-500", text: "text-emerald-400/90" },
+  ok: { dot: "bg-amber-500", text: "text-amber-400/90" },
+  heavy: { dot: "bg-red-500", text: "text-red-400/90" },
 };
 
 function FitBadge({ m, sys }: { m: ModelInfo; sys?: SystemInfo }) {
+  const t = useT();
   if (!sys) return null;
-  const { level, note } = modelFit(m, sys);
+  const { level, note } = modelFit(m, sys, t);
   const ui = FIT_UI[level];
-  const hw = `${sys.physicalCores} ядер, ${sys.ramTotalGb.toFixed(0)} ГБ ОЗУ${
-    sys.gpuName ? `, ${sys.gpuName}` : ""
-  }`;
+  const fitLabel: Record<Fit, string> = {
+    good: t.modelSelector.fitGood,
+    ok: t.modelSelector.fitOk,
+    heavy: t.modelSelector.fitHeavy,
+  };
+  const hw = `${t.common.cores(sys.physicalCores)}, ${t.common.ramGb(
+    sys.ramTotalGb.toFixed(0),
+  )}${sys.gpuName ? `, ${sys.gpuName}` : ""}`;
   return (
     <span
       className={`mt-1 inline-flex items-center gap-1.5 text-[11px] ${ui.text}`}
-      title={`Оценка по вашему железу: ${hw}`}
+      title={t.modelSelector.hwEstimateTitle(hw)}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${ui.dot}`} />
-      {ui.label}
+      {fitLabel[level]}
       {note && <span className="text-zinc-500">· {note}</span>}
     </span>
   );
 }
 
 export default function ModelSelector() {
+  const t = useT();
   const { data: models, refetch } = useQuery({ queryKey: ["models"], queryFn: listModels });
   const { data: active, refetch: refetchActive } = useQuery({
     queryKey: ["activeModel"],
@@ -144,9 +158,12 @@ export default function ModelSelector() {
             </span>
 
             <span className="min-w-0 flex-1">
-              <span className="block text-sm text-zinc-200">{m.name}</span>
+              <span className="block text-sm text-zinc-200">
+                {t.models[m.id]?.name ?? m.name}
+              </span>
               <span className="block text-xs text-zinc-500">
-                {m.lang} · {m.sizeMb} МБ{!m.installed && " · не скачана"}
+                {t.models[m.id]?.lang ?? m.lang} · {t.common.mb(m.sizeMb)}
+                {!m.installed && ` · ${t.common.notDownloaded}`}
               </span>
               <FitBadge m={m} sys={sys} />
               {error[m.id] && <span className="block text-xs text-red-400">{error[m.id]}</span>}

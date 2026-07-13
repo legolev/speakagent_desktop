@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Cpu, MemoryStick } from "lucide-react";
+import { Cpu, MemoryStick, Globe } from "lucide-react";
 import { systemInfo, resourceUsage, type Usage } from "../lib/api";
 import { useJobs } from "../store/jobs";
 import { fmtEta, estimateTranscribeSec } from "../lib/perf";
+import { useT, useLang } from "../i18n";
 
 export default function StatusBar() {
+  const t = useT();
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.setLang);
   const { data: sys } = useQuery({
     queryKey: ["systemInfo"],
     queryFn: systemInfo,
@@ -63,7 +67,7 @@ export default function StatusBar() {
       <div>
         {sys && (
           <span>
-            {sys.physicalCores} ядер · {sys.ramTotalGb.toFixed(0)} ГБ ОЗУ
+            {t.common.cores(sys.physicalCores)} · {t.common.ramGb(sys.ramTotalGb.toFixed(0))}
             {sys.gpuName ? ` · ${sys.gpuName}` : ""}
           </span>
         )}
@@ -72,8 +76,8 @@ export default function StatusBar() {
         {genState && (
           <span className="text-amber-400/80">
             {genState.stage === "reading"
-              ? `составляю итоги: читаю ${genState.done}/${genState.total}…`
-              : "составляю итоги…"}
+              ? t.statusBar.summarizingReading(genState.done, genState.total)
+              : t.statusBar.summarizing}
           </span>
         )}
         {running && usage && (
@@ -87,8 +91,15 @@ export default function StatusBar() {
           </>
         )}
         {running && remaining !== null && (
-          <span className="text-amber-400/80">осталось {fmtEta(remaining)}</span>
+          <span className="text-amber-400/80">{t.statusBar.remaining(fmtEta(remaining))}</span>
         )}
+        <button
+          onClick={() => setLang(lang === "ru" ? "en" : "ru")}
+          title={t.statusBar.switchLang}
+          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+        >
+          <Globe size={12} /> {lang.toUpperCase()}
+        </button>
       </div>
     </div>
   );

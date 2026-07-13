@@ -315,7 +315,7 @@ pub fn list() -> Vec<ModelInfo> {
 
 /// Потоковая загрузка URL в файл с прогрессом (следует за редиректами — как GitHub/HF LFS).
 fn fetch_file(url: &str, dest: &Path, mut on: impl FnMut(u64, u64)) -> Result<(), String> {
-    let resp = ureq::get(url).call().map_err(|e| format!("сеть: {e}"))?;
+    let resp = ureq::get(url).call().map_err(|e| format!("network error: {e}"))?;
     let total: u64 = resp
         .header("Content-Length")
         .and_then(|s| s.parse().ok())
@@ -337,7 +337,7 @@ fn fetch_file(url: &str, dest: &Path, mut on: impl FnMut(u64, u64)) -> Result<()
 }
 
 pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), String> {
-    let spec = find(id).ok_or("неизвестная модель")?;
+    let spec = find(id).ok_or("unknown model")?;
     let dir = models_dir();
 
     // ── мультифайловая модель (onnx + tokenizer + config): каждый файл по своему пути ──
@@ -354,7 +354,7 @@ pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), S
         }
         on_progress(n, n);
         if !is_installed(spec) {
-            return Err("после загрузки файл модели не найден".into());
+            return Err("model file not found after download".into());
         }
         return Ok(());
     }
@@ -370,7 +370,7 @@ pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), S
             let bz = bzip2::read::BzDecoder::new(f);
             tar::Archive::new(bz)
                 .unpack(&dir)
-                .map_err(|e| format!("распаковка: {e}"))?;
+                .map_err(|e| format!("extraction: {e}"))?;
         }
         Format::Zip => {
             // ffmpeg: из Windows-архива берём bin/ffmpeg.exe, из macOS-архива — просто ffmpeg.
@@ -394,7 +394,7 @@ pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), S
                 }
             }
             if !placed {
-                return Err(format!("{want} не найден в архиве"));
+                return Err(format!("{want} not found in the archive"));
             }
         }
         // llama: из архива берём сервер + библиотеки + LICENSE в bin/llama/ (плоско).
@@ -477,7 +477,7 @@ pub fn download(id: &str, mut on_progress: impl FnMut(u64, u64)) -> Result<(), S
     let _ = std::fs::remove_file(&tmp);
 
     if !is_installed(spec) {
-        return Err("после загрузки файл модели не найден".into());
+        return Err("model file not found after download".into());
     }
     Ok(())
 }
@@ -531,7 +531,7 @@ pub fn set_active(id: &str) -> Result<(), String> {
     if find(id).map(|s| s.kind == "asr").unwrap_or(false) {
         crate::engine::store::set_setting("active_asr", id)
     } else {
-        Err("не языковая модель".into())
+        Err("not a language model".into())
     }
 }
 
@@ -575,7 +575,7 @@ pub fn set_dict_asr(id: &str) -> Result<(), String> {
     if id.is_empty() || find(id).map(|s| s.kind == "asr").unwrap_or(false) {
         crate::engine::store::set_setting("dict_asr", id)
     } else {
-        Err("не языковая модель".into())
+        Err("not a language model".into())
     }
 }
 
@@ -683,7 +683,7 @@ pub fn set_active_llm(id: &str) -> Result<(), String> {
     if find(id).map(|s| s.kind == "llm").unwrap_or(false) {
         crate::engine::store::set_setting("active_llm", id)
     } else {
-        Err("не модель итогов".into())
+        Err("not a summary model".into())
     }
 }
 

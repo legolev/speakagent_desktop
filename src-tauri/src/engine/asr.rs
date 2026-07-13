@@ -79,7 +79,7 @@ impl Asr {
         config.model_config.num_threads = num_threads;
 
         let rec = OfflineRecognizer::create(&config)
-            .ok_or("не удалось создать recognizer (проверь файлы модели)")?;
+            .ok_or("failed to create the recognizer (check model files)")?;
         Ok(Self {
             rec,
             threads: num_threads,

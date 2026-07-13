@@ -1,5 +1,6 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { tr } from "../i18n";
 
 export interface FileInfo {
   name: string;
@@ -190,6 +191,13 @@ export const setCloudConfig = (url: string, model: string, key: string) =>
 export const testCloud = (url: string, model: string, key: string) =>
   invoke<string>("test_cloud", { url, model, key });
 
+// ── Язык приложения (UI + промпты LLM) ──
+export type UiLang = "ru" | "en";
+/** Текущий язык приложения из настроек (по умолчанию "ru"). */
+export const uiLanguage = () => invoke<UiLang>("ui_language");
+/** Сохранить язык приложения (влияет и на язык вывода «Итогов»). */
+export const setUiLanguage = (lang: UiLang) => invoke<void>("set_ui_language", { lang });
+
 // ── Диктовка (push-to-talk) ──
 export interface StoredDictation {
   id: string;
@@ -263,7 +271,7 @@ export async function pickAudioFile(): Promise<string | null> {
   const res = await open({
     multiple: false,
     directory: false,
-    filters: [{ name: "Аудио и видео", extensions: MEDIA_EXTS }],
+    filters: [{ name: tr().common.pickerAudioVideo, extensions: MEDIA_EXTS }],
   });
   return typeof res === "string" ? res : null;
 }
@@ -273,7 +281,7 @@ export async function pickAudioFiles(): Promise<string[]> {
   const res = await open({
     multiple: true,
     directory: false,
-    filters: [{ name: "Аудио и видео", extensions: MEDIA_EXTS }],
+    filters: [{ name: tr().common.pickerAudioVideo, extensions: MEDIA_EXTS }],
   });
   if (Array.isArray(res)) return res;
   return typeof res === "string" ? [res] : [];

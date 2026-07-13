@@ -13,8 +13,10 @@ import {
   type LlmBackend,
 } from "../lib/api";
 import LlmModelSelector from "./LlmModelSelector";
+import { useT } from "../i18n";
 
 export default function AiProvider() {
+  const t = useT();
   const qc = useQueryClient();
   const { data: backend } = useQuery({ queryKey: ["llmBackend"], queryFn: llmBackend });
   const mode: LlmBackend = backend ?? "local";
@@ -31,8 +33,8 @@ export default function AiProvider() {
       <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5">
         {(
           [
-            { id: "local", label: "На этом компьютере", icon: Server },
-            { id: "cloud", label: "Облачный ИИ", icon: Cloud },
+            { id: "local", label: t.aiProvider.localLabel, icon: Server },
+            { id: "cloud", label: t.aiProvider.cloudLabel, icon: Cloud },
           ] as const
         ).map(({ id, label, icon: Icon }) => (
           <button
@@ -61,6 +63,7 @@ export default function AiProvider() {
 
 /** Чем считаются локальные «Итоги» — видеокартой или процессором. */
 function AccelLine() {
+  const t = useT();
   const { data: sys } = useQuery({
     queryKey: ["systemInfo"],
     queryFn: systemInfo,
@@ -69,18 +72,19 @@ function AccelLine() {
   if (!sys) return null;
   return sys.llmAccel === "gpu" ? (
     <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-emerald-400/90">
-      <Zap size={13} /> Ускорение видеокартой — {sys.gpuName}
+      <Zap size={13} /> {t.aiProvider.gpuAccel(sys.gpuName)}
     </p>
   ) : (
     <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-zinc-500">
-      <Cpu size={13} /> Без ускорения — считается на процессоре
-      {sys.gpuName ? ` (${sys.gpuName} не подходит)` : ""}
+      <Cpu size={13} /> {t.aiProvider.noGpuAccel}
+      {sys.gpuName ? t.aiProvider.gpuUnfit(sys.gpuName) : ""}
     </p>
   );
 }
 
 /** Настройки облачного провайдера: адрес, модель, токен. */
 function CloudForm() {
+  const t = useT();
   const { data: cfg } = useQuery({ queryKey: ["cloudConfig"], queryFn: cloudConfig });
   const [url, setUrl] = useState("");
   const [model, setModel] = useState("");
@@ -116,7 +120,7 @@ function CloudForm() {
     setTestErr("");
     try {
       const reply = await testCloud(url, model, key);
-      setTestOk(reply || "ок");
+      setTestOk(reply || t.aiProvider.testOkFallback);
     } catch (e) {
       setTestErr(String(e));
     } finally {
@@ -126,19 +130,16 @@ function CloudForm() {
 
   return (
     <div className="glass mt-4 space-y-3 rounded-xl border border-white/5 p-4">
-      <p className="text-xs leading-relaxed text-zinc-500">
-        Саммари, протоколы и задачи будут составляться через ваш облачный ИИ (совместимый
-        с OpenAI: OpenRouter, OpenAI и др.). Токен хранится только на этом компьютере.
-      </p>
-      <Field label="Адрес API" value={url} onChange={setUrl} placeholder="https://openrouter.ai/api/v1" />
-      <Field label="Модель" value={model} onChange={setModel} placeholder="openai/gpt-4o-mini" />
-      <Field label="Токен (ключ доступа)" value={key} onChange={setKey} placeholder="sk-…" password />
+      <p className="text-xs leading-relaxed text-zinc-500">{t.aiProvider.cloudIntro}</p>
+      <Field label={t.aiProvider.apiUrl} value={url} onChange={setUrl} placeholder="https://openrouter.ai/api/v1" />
+      <Field label={t.aiProvider.model} value={model} onChange={setModel} placeholder="openai/gpt-4o-mini" />
+      <Field label={t.aiProvider.token} value={key} onChange={setKey} placeholder="sk-…" password />
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <button
           onClick={save}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
         >
-          {saved ? <Check size={15} /> : <Save size={15} />} {saved ? "Сохранено" : "Сохранить"}
+          {saved ? <Check size={15} /> : <Save size={15} />} {saved ? t.common.saved : t.common.save}
         </button>
         <button
           onClick={test}
@@ -146,13 +147,13 @@ function CloudForm() {
           className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-200 transition hover:bg-white/5 disabled:cursor-default disabled:opacity-40"
         >
           {testing ? <Loader2 size={15} className="animate-spin" /> : <Plug size={15} />}
-          {testing ? "Проверяю…" : "Проверить связь"}
+          {testing ? t.aiProvider.testing : t.aiProvider.test}
         </button>
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
       {testOk !== null && (
         <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
-          <Check size={13} /> Связь есть — облако ответило: «{testOk}»
+          <Check size={13} /> {t.aiProvider.testSuccess(testOk)}
         </div>
       )}
       {testErr && (

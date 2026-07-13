@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, Search } from "lucide-react";
 import AudioPlayer from "./AudioPlayer";
 import DiarizeRenderer from "./DiarizeRenderer";
-import { ArtifactPanel, TABS, KIND_TITLE, type Tab } from "./MeetingResults";
+import { ArtifactPanel, TAB_DEFS, tabLabel, kindTitle, type Tab } from "./MeetingResults";
 import { parseReplicas, timeToSec } from "../lib/diarize";
 import { highlightText, countMatches } from "../lib/highlight";
 import { useJobs } from "../store/jobs";
+import { useT } from "../i18n";
 import type { ResultKind } from "../lib/api";
 
 interface Props {
@@ -35,6 +36,7 @@ export default function ResultView({
   name,
   onRetranscribe,
 }: Props) {
+  const t = useT();
   const [time, setTime] = useState(0);
   const seekRef = useRef<((sec: number) => void) | null>(null);
   const [tab, setTab] = useState<Tab>("text");
@@ -71,13 +73,13 @@ export default function ResultView({
           <input
             value={tq}
             onChange={(e) => setTq(e.target.value)}
-            placeholder="Поиск по тексту расшифровки…"
+            placeholder={t.resultView.searchPlaceholder}
             className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-amber-500/50"
           />
         </div>
         {tq.trim() && (
           <span className="shrink-0 text-xs text-zinc-500">
-            {matches > 0 ? `совпадений: ${matches}` : "не найдено"}
+            {matches > 0 ? t.resultView.matches(matches) : t.resultView.notFound}
           </span>
         )}
       </div>
@@ -93,7 +95,7 @@ export default function ResultView({
           />
         ) : (
           <div className="select-text whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
-            {text ? highlightText(text, tq) : "(речь не распознана)"}
+            {text ? highlightText(text, tq) : t.resultView.noSpeech}
           </div>
         )}
       </div>
@@ -118,7 +120,7 @@ export default function ResultView({
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
-                {s === "business" ? "Деловая встреча" : "Собеседование"}
+                {s === "business" ? t.resultView.protoBusiness : t.resultView.protoInterview}
               </button>
             ))}
           </div>
@@ -127,9 +129,10 @@ export default function ResultView({
           <ArtifactPanel
             jobId={jobId}
             kind={(tab === "protocol" ? protoStyle : tab) as ResultKind}
-            exportName={`${name ?? "Итоги"} — ${
-              KIND_TITLE[tab === "protocol" ? protoStyle : tab]
-            }`}
+            exportName={`${name ?? t.resultView.exportFallbackName} — ${kindTitle(
+              t,
+              tab === "protocol" ? protoStyle : tab,
+            )}`}
             textLen={text.length}
           />
         </div>
@@ -147,7 +150,7 @@ export default function ResultView({
           <AudioPlayer path={path} onTime={setTime} seekRef={seekRef} />
           {diarize && (
             <div className="mt-2 px-0.5 text-[11px] leading-snug text-zinc-500">
-              Кликните по реплике справа — плеер перемотается к ней.
+              {t.resultView.clickReplica}
             </div>
           )}
         </div>
@@ -155,28 +158,28 @@ export default function ResultView({
           <button
             onClick={() => (onRetranscribe ? onRetranscribe() : retranscribe(jobId))}
             disabled={busy}
-            title="Распознать эту запись заново (например, другой моделью)"
+            title={t.resultView.retranscribeTitle}
             className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20 disabled:cursor-default disabled:opacity-40"
           >
-            <RotateCcw size={15} /> {busy ? "Идёт расшифровка…" : "Расшифровать заново"}
+            <RotateCcw size={15} /> {busy ? t.resultView.transcribing : t.resultView.retranscribe}
           </button>
         )}
         {jobId && (
           <div className="flex flex-col gap-0.5 rounded-xl border border-white/10 bg-black/20 p-2">
-            {TABS.map((t) => {
-              const Icon = t.icon;
-              const active = tab === t.id;
+            {TAB_DEFS.map((def) => {
+              const Icon = def.icon;
+              const active = tab === def.id;
               return (
                 <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
+                  key={def.id}
+                  onClick={() => setTab(def.id)}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${
                     active
                       ? "bg-amber-500/15 text-amber-300"
                       : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
                   }`}
                 >
-                  <Icon size={15} /> {t.label}
+                  <Icon size={15} /> {tabLabel(t, def.id)}
                 </button>
               );
             })}

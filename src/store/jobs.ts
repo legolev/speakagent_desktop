@@ -381,7 +381,7 @@ export const useJobs = create<JobsState>((set, get) => ({
       })
       .catch((e) => {
         const msg = String(e);
-        if (msg.includes("отменено")) patch({ status: "idle", partial: undefined });
+        if (msg.includes("cancelled")) patch({ status: "idle", partial: undefined });
         else patch({ status: "error", error: msg, partial: undefined });
       });
   },

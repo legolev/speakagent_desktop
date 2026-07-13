@@ -1,40 +1,39 @@
 import { Link } from "react-router-dom";
 import { WifiOff, Users, Lock, ArrowRight } from "lucide-react";
 import type { ComponentType } from "react";
+import { useT } from "../i18n";
 
 export default function HomePage() {
+  const t = useT();
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Расшифровка речи — прямо на вашем компьютере
-      </h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{t.home.title}</h1>
       <p className="mt-3 max-w-xl text-zinc-400">
-        Превратите любую запись — интервью, встречу, лекцию, голосовое — в текст.
-        Быстро, аккуратно и полностью офлайн: файлы никуда не загружаются.
+        {t.home.subtitle1} {t.home.subtitle2}
       </p>
 
       <Link
         to="/transcribe"
         className="mt-7 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-medium text-zinc-950 transition hover:bg-amber-400"
       >
-        Расшифровать запись <ArrowRight size={18} />
+        {t.home.cta} <ArrowRight size={18} />
       </Link>
 
       <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card
           icon={WifiOff}
-          title="Работает без интернета"
-          text="Всё считается на вашем устройстве. Никаких загрузок и подписок за минуты."
+          title={t.home.feat1Title}
+          text={t.home.feat1Text}
         />
         <Card
           icon={Users}
-          title="Различает говорящих"
-          text="Понимает, кто и когда говорил, — удобно для встреч и интервью."
+          title={t.home.feat2Title}
+          text={t.home.feat2Text}
         />
         <Card
           icon={Lock}
-          title="Полная приватность"
-          text="Записи не покидают компьютер. Ваши разговоры остаются вашими."
+          title={t.home.feat3Title}
+          text={t.home.feat3Text}
         />
       </div>
     </div>

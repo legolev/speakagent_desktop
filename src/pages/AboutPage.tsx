@@ -17,6 +17,7 @@ import {
 import { appInfo, systemInfo, isReady, llmReady, openUrl } from "../lib/api";
 import { checkUpdate, installUpdate, type Update } from "../lib/update";
 import Diagnostics from "../components/Diagnostics";
+import { useT } from "../i18n";
 
 const REPO = "https://github.com/legolev/speakagent_desktop";
 
@@ -29,6 +30,7 @@ const CRYPTO: { label: string; addr: string }[] = [
 ];
 
 export default function AboutPage() {
+  const t = useT();
   const { data: app } = useQuery({ queryKey: ["appInfo"], queryFn: appInfo });
   const { data: sys } = useQuery({
     queryKey: ["systemInfo"],
@@ -82,7 +84,7 @@ export default function AboutPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">О приложении</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t.about.title}</h1>
 
       {/* Шапка */}
       <div className="glass mt-6 flex items-center gap-4 rounded-2xl border border-white/5 p-6">
@@ -97,32 +99,29 @@ export default function AboutPage() {
           <div className="text-xl font-semibold">
             Speak<span className="text-amber-500">Agent</span> Desktop
           </div>
-          <div className="text-sm text-zinc-400">
-            Расшифровка и диаризация речи — офлайн, на вашем компьютере
+          <div className="text-sm text-zinc-400">{t.about.tagline}</div>
+          <div className="mt-1 text-xs text-zinc-500">
+            {t.about.version(app?.version ?? "…")}
           </div>
-          <div className="mt-1 text-xs text-zinc-500">Версия {app?.version ?? "…"}</div>
         </div>
       </div>
       {eggs >= 5 && (
-        <div className="mt-2 text-xs text-amber-400/90">
-          🥚 Все ваши записи так и не покинули этот компьютер. Ни байта. Спасибо, что
-          выбираете приватность!
-        </div>
+        <div className="mt-2 text-xs text-amber-400/90">{t.about.easterEgg}</div>
       )}
 
       {/* Обновления */}
       <div className="glass mt-4 rounded-xl border border-white/5 p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm font-medium text-zinc-200">Обновления</div>
+            <div className="text-sm font-medium text-zinc-200">{t.about.updates}</div>
             <div className="text-xs text-zinc-500">
               {checking
-                ? "Проверяю наличие обновлений…"
+                ? t.about.checking
                 : upd
-                  ? `Доступна новая версия ${upd.version}`
+                  ? t.about.updateAvailable(upd.version)
                   : checked
-                    ? "У вас последняя версия"
-                    : "Автоматическая проверка обновлений"}
+                    ? t.about.upToDate
+                    : t.about.autoCheck}
             </div>
           </div>
           {upd ? (
@@ -133,11 +132,11 @@ export default function AboutPage() {
             >
               {downloading ? (
                 <>
-                  <Loader2 size={15} className="animate-spin" /> Загрузка {progress}%
+                  <Loader2 size={15} className="animate-spin" /> {t.about.downloading(progress)}
                 </>
               ) : (
                 <>
-                  <Download size={15} /> Обновить
+                  <Download size={15} /> {t.about.updateBtn}
                 </>
               )}
             </button>
@@ -152,7 +151,7 @@ export default function AboutPage() {
               ) : (
                 <RefreshCw size={15} />
               )}
-              Проверить
+              {t.about.checkBtn}
             </button>
           )}
         </div>
@@ -176,24 +175,28 @@ export default function AboutPage() {
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <InfoRow
           icon={Github}
-          label="Исходный код"
+          label={t.about.sourceCode}
           value="github.com/legolev/speakagent_desktop"
           onClick={() => openUrl(REPO).catch(() => {})}
         />
-        <InfoRow icon={ShieldCheck} label="Лицензия" value="Apache 2.0" />
+        <InfoRow icon={ShieldCheck} label={t.about.license} value="Apache 2.0" />
         <InfoRow
           icon={HardDrive}
-          label="Железо"
-          value={sys ? `${sys.physicalCores} ядер · ${sys.ramTotalGb.toFixed(0)} ГБ ОЗУ` : "…"}
+          label={t.about.hardware}
+          value={
+            sys
+              ? `${t.common.cores(sys.physicalCores)} · ${t.common.ramGb(sys.ramTotalGb.toFixed(0))}`
+              : "…"
+          }
         />
         <InfoRow
           icon={sys?.llmAccel === "gpu" ? Zap : Cpu}
-          label="Ускорение"
+          label={t.about.accel}
           value={
             sys
               ? sys.llmAccel === "gpu"
-                ? `видеокарта — ${sys.gpuName}`
-                : "процессор"
+                ? t.about.gpuAccel(sys.gpuName)
+                : t.about.cpu
               : "…"
           }
         />
@@ -203,12 +206,9 @@ export default function AboutPage() {
       {(BOOSTY_URL || CRYPTO.length > 0) && (
         <>
           <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Поддержать проект
+            {t.about.supportTitle}
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">
-            Приложение бесплатное и офлайн. Если оно вам помогает — можно поддержать
-            разработку. Это не покупает поддержку или приоритет, просто помогает проекту жить.
-          </p>
+          <p className="mt-1 text-sm text-zinc-400">{t.about.supportText}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {BOOSTY_URL && (
               <button
@@ -221,7 +221,7 @@ export default function AboutPage() {
             {CRYPTO.map((c) => (
               <button
                 key={c.label}
-                title={`Скопировать адрес ${c.label}: ${c.addr}`}
+                title={t.about.copyAddrTitle(c.label, c.addr)}
                 onClick={() => {
                   navigator.clipboard.writeText(c.addr).catch(() => {});
                   setCopied(c.label);
@@ -234,7 +234,7 @@ export default function AboutPage() {
                 ) : (
                   <Coins size={15} />
                 )}
-                {copied === c.label ? "Скопировано" : c.label}
+                {copied === c.label ? t.common.copied : c.label}
               </button>
             ))}
           </div>
@@ -243,43 +243,38 @@ export default function AboutPage() {
 
       {/* Состояние компонентов */}
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Состояние компонентов
+        {t.about.componentsTitle}
       </h2>
       <div className="glass mt-3 divide-y divide-white/5 rounded-xl border border-white/5">
         <StatusRow
-          label="Распознавание речи"
+          label={t.about.asrLabel}
           ok={!!asrReady}
-          okText="готово к работе"
-          badText="нужно скачать модель"
+          okText={t.about.asrOk}
+          badText={t.about.asrBad}
         />
         <StatusRow
-          label="ИИ-функции (итоги встреч)"
+          label={t.about.aiLabel}
           ok={!!llmR}
-          okText="готово"
-          badText="не настроено"
+          okText={t.about.aiOk}
+          badText={t.about.aiBad}
         />
         <StatusRow
-          label="Ускорение вычислений"
+          label={t.about.accelLabel}
           ok={sys?.llmAccel === "gpu"}
-          okText={sys?.gpuName ?? "видеокарта"}
-          badText="только процессор"
+          okText={sys?.gpuName ?? t.about.gpuFallback}
+          badText={t.about.cpuOnly}
           neutral
         />
       </div>
 
       {/* Диагностика и поддержка */}
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Диагностика и поддержка
+        {t.about.diagnosticsTitle}
       </h2>
-      <p className="mt-1 text-sm text-zinc-400">
-        Уникальный ID этого компьютера и служебная информация — пригодятся, если нужно задать
-        вопрос или сообщить о проблеме.
-      </p>
+      <p className="mt-1 text-sm text-zinc-400">{t.about.diagnosticsIntro}</p>
       <Diagnostics />
 
-      <p className="mt-8 text-center text-xs text-zinc-600">
-        Сделано с ❤️ для тех, кому важна приватность записей.
-      </p>
+      <p className="mt-8 text-center text-xs text-zinc-600">{t.about.madeWith}</p>
     </div>
   );
 }

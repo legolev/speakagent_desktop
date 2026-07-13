@@ -12,8 +12,10 @@ import {
   type ModelInfo,
   type DlProgress,
 } from "../lib/api";
+import { useT } from "../i18n";
 
 export default function LlmModelSelector() {
+  const t = useT();
   const { data: models, refetch } = useQuery({ queryKey: ["models"], queryFn: listModels });
   const { data: active, refetch: refetchActive } = useQuery({
     queryKey: ["activeLlmModel"],
@@ -72,9 +74,10 @@ export default function LlmModelSelector() {
             </span>
 
             <span className="min-w-0 flex-1">
-              <span className="block text-sm text-zinc-200">{m.name}</span>
+              <span className="block text-sm text-zinc-200">{t.models[m.id]?.name ?? m.name}</span>
               <span className="block text-xs text-zinc-500">
-                {m.sizeMb} МБ{!m.installed && " · не скачана"}
+                {t.common.mb(m.sizeMb)}
+                {!m.installed && ` · ${t.common.notDownloaded}`}
               </span>
               {error[m.id] && <span className="block text-xs text-red-400">{error[m.id]}</span>}
             </span>

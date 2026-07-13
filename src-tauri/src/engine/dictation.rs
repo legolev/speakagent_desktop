@@ -83,7 +83,7 @@ fn audio_engine(rx: mpsc::Receiver<Cmd>) {
                     match open_stream(&device, shared.clone()) {
                         Ok(s) => {
                             if let Err(e) = s.play() {
-                                let _ = reply.send(Err(format!("микрофон не запустился: {e}")));
+                                let _ = reply.send(Err(format!("microphone failed to start: {e}")));
                                 continue;
                             }
                             stream = Some(s);
@@ -148,10 +148,10 @@ fn feed(shared: &Mutex<AudioBuf>, samples: impl Iterator<Item = f32>) {
 
 fn open_stream(device_name: &str, shared: Arc<Mutex<AudioBuf>>) -> Result<cpal::Stream, String> {
     let host = cpal::default_host();
-    let device = pick_device(&host, device_name).ok_or("микрофон не найден")?;
+    let device = pick_device(&host, device_name).ok_or("microphone not found")?;
     let config = device
         .default_input_config()
-        .map_err(|e| format!("конфиг микрофона: {e}"))?;
+        .map_err(|e| format!("microphone config: {e}"))?;
     let src_rate = config.sample_rate().0;
     let channels = config.channels();
     {
@@ -196,9 +196,9 @@ fn open_stream(device_name: &str, shared: Arc<Mutex<AudioBuf>>) -> Result<cpal::
                 None,
             )
         }
-        other => return Err(format!("неподдерживаемый формат микрофона: {other:?}")),
+        other => return Err(format!("unsupported microphone format: {other:?}")),
     }
-    .map_err(|e| format!("не удалось открыть микрофон: {e}"))?;
+    .map_err(|e| format!("failed to open microphone: {e}"))?;
     Ok(stream)
 }
 
@@ -238,8 +238,8 @@ pub fn start(device_name: &str) -> Result<(), String> {
     let tx = engine_tx();
     let (rtx, rrx) = mpsc::channel();
     tx.send(Cmd::Arm(device_name.to_string(), rtx))
-        .map_err(|_| "аудио-движок недоступен".to_string())?;
-    rrx.recv().map_err(|_| "аудио-движок не ответил".to_string())?
+        .map_err(|_| "audio engine unavailable".to_string())?;
+    rrx.recv().map_err(|_| "audio engine did not respond".to_string())?
 }
 
 /// Остановить запись и вернуть PCM 16 кГц mono (стрим остаётся тёплым).
@@ -247,8 +247,8 @@ pub fn stop() -> Result<Vec<f32>, String> {
     let tx = engine_tx();
     let (rtx, rrx) = mpsc::channel();
     tx.send(Cmd::Disarm(rtx))
-        .map_err(|_| "аудио-движок недоступен".to_string())?;
-    rrx.recv().map_err(|_| "аудио-движок не ответил".to_string())?
+        .map_err(|_| "audio engine unavailable".to_string())?;
+    rrx.recv().map_err(|_| "audio engine did not respond".to_string())?
 }
 
 // ───────────────────────── «Тёплый» ASR ─────────────────────────
@@ -285,7 +285,7 @@ fn ensure_worker() -> Sender<Job> {
                     if reload {
                         let loaded = models::dict_asr_files()
                             .ok_or_else(|| {
-                                "Модель распознавания для диктовки не установлена. Откройте «Настройки»."
+                                "Dictation recognition model is not installed. Open Settings."
                                     .to_string()
                             })
                             .and_then(|f| Asr::load(&f, num_threads()));
@@ -316,7 +316,7 @@ pub fn transcribe(pcm: Vec<f32>) -> Result<String, String> {
     let tx = ensure_worker();
     let (rtx, rrx) = mpsc::channel();
     tx.send(Job::Transcribe(pcm, rtx))
-        .map_err(|_| "движок диктовки недоступен".to_string())?;
+        .map_err(|_| "dictation engine unavailable".to_string())?;
     rrx.recv()
-        .map_err(|_| "движок диктовки не ответил".to_string())?
+        .map_err(|_| "dictation engine did not respond".to_string())?
 }

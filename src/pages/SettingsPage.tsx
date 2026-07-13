@@ -1,23 +1,24 @@
-import { ShieldCheck, Wand2, FolderOpen, Languages } from "lucide-react";
+import { ShieldCheck, Wand2, FolderOpen, Globe } from "lucide-react";
 import { openDataDir } from "../lib/api";
 import ModelSelector from "../components/ModelSelector";
 import AiProvider from "../components/AiProvider";
 import { useUi } from "../store/ui";
+import { useT, useLang } from "../i18n";
 
 export default function SettingsPage() {
+  const t = useT();
   const openSetup = useUi((s) => s.openSetup);
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.setLang);
 
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Настройки</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t.settings.title}</h1>
 
       <h2 className="mt-6 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Модель по умолчанию
+        {t.settings.defaultModel}
       </h2>
-      <p className="mt-1 text-sm text-zinc-400">
-        Выберите язык распознавания. Не скачанную модель можно загрузить прямо здесь —
-        нажмите на неё.
-      </p>
+      <p className="mt-1 text-sm text-zinc-400">{t.settings.defaultModelHint}</p>
       <ModelSelector />
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -25,64 +26,59 @@ export default function SettingsPage() {
           onClick={openSetup}
           className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
         >
-          <Wand2 size={15} /> Мастер настройки
+          <Wand2 size={15} /> {t.settings.setupWizard}
         </button>
         <button
           onClick={() => openDataDir().catch(() => {})}
           className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
         >
-          <FolderOpen size={15} /> Папка с данными
+          <FolderOpen size={15} /> {t.settings.dataFolder}
         </button>
       </div>
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        ИИ-функции
+        {t.settings.aiFeatures}
       </h2>
-      <p className="mt-1 text-sm text-zinc-400">
-        Саммари, протокол и задачи по записи. Можно считать локально (полностью офлайн,
-        помощник докачивается один раз ~32 МБ) или через ваш облачный ИИ по токену.
-      </p>
+      <p className="mt-1 text-sm text-zinc-400">{t.settings.aiFeaturesHint}</p>
       <AiProvider />
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Скоро в обновлениях
+        {t.settings.interfaceLanguage}
       </h2>
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Soon icon={Languages} title="Язык интерфейса" text="English и другие" />
+      <p className="mt-1 text-sm text-zinc-400">{t.settings.interfaceLanguageHint}</p>
+      <div className="mt-3 inline-flex items-center gap-2">
+        <Globe size={16} className="text-zinc-500" />
+        <div className="inline-flex overflow-hidden rounded-lg border border-white/10">
+          <button
+            onClick={() => setLang("ru")}
+            className={`px-4 py-2 text-sm transition ${
+              lang === "ru"
+                ? "bg-amber-500/15 text-amber-400"
+                : "text-zinc-300 hover:bg-white/5"
+            }`}
+          >
+            Русский
+          </button>
+          <button
+            onClick={() => setLang("en")}
+            className={`border-l border-white/10 px-4 py-2 text-sm transition ${
+              lang === "en"
+                ? "bg-amber-500/15 text-amber-400"
+                : "text-zinc-300 hover:bg-white/5"
+            }`}
+          >
+            English
+          </button>
+        </div>
       </div>
 
       <div className="glass mt-8 rounded-xl border border-white/5 p-5">
         <div className="flex items-center gap-2 font-medium">
-          <ShieldCheck size={18} className="text-amber-500" /> Приватность
+          <ShieldCheck size={18} className="text-amber-500" /> {t.settings.privacy}
         </div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Все записи обрабатываются только на этом компьютере и никуда не отправляются.
-          Интернет нужен лишь для первой загрузки моделей (и для облачного ИИ, если вы его
-          выбрали).
+          {t.settings.privacyText}
         </p>
-      </div>
-    </div>
-  );
-}
-
-function Soon({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 opacity-60">
-      <Icon size={18} className="mt-0.5 shrink-0 text-zinc-500" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-300">{title}</span>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400">скоро</span>
-        </div>
-        <div className="mt-0.5 text-xs text-zinc-500">{text}</div>
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 // Общий разбор диаризованного текста "SpeakerN [H:MM:SS]: текст".
 // Используется рендером, экспортом и переименованием спикеров.
 
+import { tr } from "../i18n";
+
 export interface Replica {
   speaker: number;
   time: string;
@@ -23,7 +25,7 @@ export function parseReplicas(text: string): Replica[] {
 
 /** Отображаемое имя спикера: заданное пользователем или «Спикер N». */
 export function speakerLabel(n: number, names?: Record<number, string>): string {
-  return names?.[n]?.trim() || `Спикер ${n}`;
+  return names?.[n]?.trim() || tr().common.speaker(n);
 }
 
 /** "H:MM:SS" | "M:SS" → секунды. */

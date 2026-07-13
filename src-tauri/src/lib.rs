@@ -254,7 +254,7 @@ async fn transcribe(
         let audio_sec = samples.len() as f64 / 16000.0;
 
         let files = engine::models::active_asr_files().ok_or(
-            "Модель распознавания не установлена. Откройте «Настройки» и выберите модель.",
+            "Recognition model is not installed. Open Settings and choose a model.",
         )?;
         let asr = engine::asr::Asr::load(&files, num_threads())?;
         // фиксированная часть (декод + загрузка модели) — калибруем отдельно от RTF
@@ -268,7 +268,7 @@ async fn transcribe(
         let segs = if diarize {
             send("diarizing", 0, 0, "");
             let (seg, emb) = engine::models::diarization().ok_or(
-                "Модели для распознавания говорящих не установлены. Скачайте их в «Настройках».",
+                "Speaker recognition models are not installed. Download them in Settings.",
             )?;
             let n_spk = num_speakers.unwrap_or(0).max(0);
             Some(engine::diarize::diarize(
@@ -476,15 +476,15 @@ async fn llm_generate(
     kind: String,
     on_progress: tauri::ipc::Channel<LlmProgress>,
 ) -> Result<String, String> {
-    let rkind = engine::llm::ResultKind::parse(&kind).ok_or("неизвестный тип итога")?;
+    let rkind = engine::llm::ResultKind::parse(&kind).ok_or("unknown summary type")?;
     let cancel = Arc::new(AtomicBool::new(false));
     let ckey = format!("llm:{job_id}");
     cancels().lock().unwrap().insert(ckey.clone(), cancel.clone());
 
     let out = tauri::async_runtime::spawn_blocking(move || {
-        let job = engine::store::get(&job_id).ok_or("запись не найдена в истории")?;
+        let job = engine::store::get(&job_id).ok_or("recording not found in history")?;
         if job.text.trim().is_empty() {
-            return Err("в записи нет текста".into());
+            return Err("recording has no text".into());
         }
         let transcript = engine::llm::prepare_transcript(&job.text, &job.speakers);
         let digest = engine::store::digest_for(&job_id);
@@ -562,8 +562,8 @@ fn save_result_text(job_id: String, kind: String, text: String) -> Result<(), St
 /// Запасной путь для слабых машин — пользователь копирует и несёт в любой ИИ-чат.
 #[tauri::command]
 fn llm_export_prompt(job_id: String, kind: String) -> Result<String, String> {
-    let rkind = engine::llm::ResultKind::parse(&kind).ok_or("неизвестный тип итога")?;
-    let job = engine::store::get(&job_id).ok_or("запись не найдена")?;
+    let rkind = engine::llm::ResultKind::parse(&kind).ok_or("unknown summary type")?;
+    let job = engine::store::get(&job_id).ok_or("recording not found")?;
     let transcript = engine::llm::prepare_transcript(&job.text, &job.speakers);
     Ok(format!(
         "{}\n\n---\n\nРасшифровка:\n\n{}",
@@ -577,14 +577,14 @@ fn llm_export_prompt(job_id: String, kind: String) -> Result<String, String> {
 #[tauri::command]
 async fn llm_display_name(job_id: String) -> Result<String, String> {
     if !engine::llm::is_warm() {
-        return Err("помощник не запущен".into());
+        return Err("assistant is not running".into());
     }
     tauri::async_runtime::spawn_blocking(move || {
-        let job = engine::store::get(&job_id).ok_or("запись не найдена")?;
+        let job = engine::store::get(&job_id).ok_or("recording not found")?;
         let transcript = engine::llm::prepare_transcript(&job.text, &job.speakers);
         let name = engine::llm::display_name(&transcript, &AtomicBool::new(false))?;
         if name.trim().is_empty() || name.chars().count() > 80 {
-            return Err("название не получилось".into());
+            return Err("could not generate a name".into());
         }
         Ok(name)
     })
@@ -614,12 +614,29 @@ fn llm_backend() -> String {
 #[tauri::command]
 fn set_llm_backend(mode: String) -> Result<(), String> {
     if mode != "local" && mode != "cloud" {
-        return Err("неизвестный режим".into());
+        return Err("unknown backend mode".into());
     }
     if mode == "cloud" {
         engine::llm::shutdown(); // локальный сервер больше не нужен
     }
     engine::store::set_setting("llm_backend", &mode)
+}
+
+// ─────────────── Язык приложения (UI + промпты «Итогов») ───────────────
+
+/// Язык интерфейса и вывода LLM: "ru" (по умолчанию) или "en". Единый ключ `ui_lang`
+/// читают и фронтенд (UI-строки, локаль дат), и движок (`engine::llm` выбирает промпт).
+#[tauri::command]
+fn ui_language() -> String {
+    engine::store::get_setting("ui_lang").unwrap_or_else(|| "ru".into())
+}
+
+#[tauri::command]
+fn set_ui_language(lang: String) -> Result<(), String> {
+    if lang != "ru" && lang != "en" {
+        return Err("unsupported language (expected ru|en)".into());
+    }
+    engine::store::set_setting("ui_lang", &lang)
 }
 
 #[derive(Serialize)]
@@ -705,22 +722,22 @@ fn diagnostics() -> String {
         .map(|m| m.id)
         .collect();
     format!(
-        "SpeakAgent Desktop — служебная информация\n\
-         Версия: {ver}\n\
-         ID устройства: {dev}\n\
-         ОС: {os} {arch}\n\
-         Железо: {cores} ядер, {ram:.1} ГБ ОЗУ\n\
-         Видеокарта: {gpuname} · ускорение «Итогов»: {accel}\n\
-         ASR: {asr} · готова: {ready}\n\
-         ИИ-функции: {backend} · модель {llm}\n\
+        "SpeakAgent Desktop — diagnostics\n\
+         Version: {ver}\n\
+         Device ID: {dev}\n\
+         OS: {os} {arch}\n\
+         Hardware: {cores} cores, {ram:.1} GB RAM\n\
+         GPU: {gpuname} · summaries acceleration: {accel}\n\
+         ASR: {asr} · ready: {ready}\n\
+         AI features: {backend} · model {llm}\n\
          ffmpeg: {ffmpeg}\n\
-         Скачанные модели: {installed}",
+         Downloaded models: {installed}",
         ver = env!("CARGO_PKG_VERSION"),
         dev = device_id(),
         os = std::env::consts::OS,
         arch = std::env::consts::ARCH,
         cores = physical_cores(),
-        gpuname = gpu.map(|g| g.name).unwrap_or_else(|| "нет".into()),
+        gpuname = gpu.map(|g| g.name).unwrap_or_else(|| "none".into()),
         asr = engine::models::active_id(),
         ready = engine::models::active_asr_files().is_some(),
         llm = engine::models::active_llm_id(),
@@ -760,8 +777,17 @@ fn reveal_file(path: String) -> Result<(), String> {
 /// Открыть внешний http(s)-адрес в системном браузере (для ссылки на репозиторий и т.п.).
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
-    if !url.starts_with("http://") && !url.starts_with("https://") {
-        return Err("недопустимый адрес".into());
+    // http(s) — обычные ссылки; cursor:// и vscode: — deep-link'и клиентов MCP
+    // для установки сервера в один клик. Прочие схемы в `open` не пускаем.
+    const ALLOWED_SCHEMES: &[&str] = &[
+        "http://",
+        "https://",
+        "cursor://",
+        "vscode:",
+        "vscode-insiders:",
+    ];
+    if !ALLOWED_SCHEMES.iter().any(|s| url.starts_with(s)) {
+        return Err("invalid address".into());
     }
     #[cfg(target_os = "windows")]
     let program = "explorer";
@@ -1226,7 +1252,7 @@ fn request_permission(kind: String) -> Result<(), String> {
                 macperms::prompt_input_monitoring();
                 open_privacy_settings("Privacy_ListenEvent");
             }
-            _ => return Err("неизвестное разрешение".into()),
+            _ => return Err("unknown permission".into()),
         }
         Ok(())
     }
@@ -1350,11 +1376,11 @@ fn tray_status_item() -> &'static Mutex<Option<tauri::menu::MenuItem<tauri::Wry>
 
 fn tray_status_text() -> String {
     if engine::dictation::is_recording() {
-        "● Идёт запись диктовки".into()
+        "● Dictation recording".into()
     } else if mcp::is_running() {
-        format!("MCP-сервер: вкл :{}", mcp::running_port().unwrap_or(0))
+        format!("MCP server: on :{}", mcp::running_port().unwrap_or(0))
     } else {
-        "Готов".into()
+        "Ready".into()
     }
 }
 
@@ -1384,7 +1410,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let status = MenuItemBuilder::with_id("status", tray_status_text())
         .enabled(false)
         .build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
     let menu = MenuBuilder::new(app)
         .item(&status)
         .separator()
@@ -1508,6 +1534,8 @@ pub fn run() {
             set_active_llm_model,
             llm_backend,
             set_llm_backend,
+            ui_language,
+            set_ui_language,
             cloud_config,
             set_cloud_config,
             test_cloud,

@@ -69,7 +69,7 @@ pub fn start(port: u16, token: Option<String>) -> Result<u16, String> {
         return Ok(r.port);
     }
     let std_listener = std::net::TcpListener::bind(("127.0.0.1", port))
-        .map_err(|e| format!("порт {port} недоступен: {e}"))?;
+        .map_err(|e| format!("port {port} is not available: {e}"))?;
     std_listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let actual = std_listener.local_addr().map(|a| a.port()).unwrap_or(port);
 
@@ -190,7 +190,7 @@ async fn dispatch(req: &Value) -> Option<Value> {
         "tools/call" => call_tool(&params).await,
         "resources/list" => Ok(json!({ "resources": [] })),
         "prompts/list" => Ok(json!({ "prompts": [] })),
-        other => Err((-32601, format!("метод не поддерживается: {other}"))),
+        other => Err((-32601, format!("method not supported: {other}"))),
     };
 
     Some(match result {
@@ -220,29 +220,29 @@ fn tool_defs() -> Vec<Value> {
     vec![
         json!({
             "name": "status",
-            "description": "Статус приложения: версия, активная модель, готовность ASR/LLM, папка данных.",
+            "description": "App status: version, active model, ASR/LLM readiness, data folder.",
             "inputSchema": { "type": "object", "properties": {} }
         }),
         json!({
             "name": "transcribe",
-            "description": "Распознать аудио/видео файл в текст (офлайн). Результат сохраняется в историю. Возвращает text и jobId.",
+            "description": "Transcribe an audio/video file to text (offline). The result is saved to history. Returns text and jobId.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "source": src("Абсолютный путь к локальному аудио/видео файлу"),
-                    "language": { "type": "string", "description": "Подсказка языка (ru|en), опционально" }
+                    "source": src("Absolute path to a local audio/video file"),
+                    "language": { "type": "string", "description": "Language hint (ru|en), optional" }
                 },
                 "required": ["source"]
             }
         }),
         json!({
             "name": "diarize",
-            "description": "Распознать файл с разделением по говорящим (SpeakerN [время]: текст). Сохраняется в историю.",
+            "description": "Transcribe a file with speaker separation (SpeakerN [time]: text). Saved to history.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "source": src("Абсолютный путь к локальному аудио/видео файлу"),
-                    "numSpeakers": { "type": "integer", "description": "Точное число говорящих (0/пусто — авто)" },
+                    "source": src("Absolute path to a local audio/video file"),
+                    "numSpeakers": { "type": "integer", "description": "Exact number of speakers (0/empty — auto)" },
                     "language": { "type": "string" }
                 },
                 "required": ["source"]
@@ -250,48 +250,48 @@ fn tool_defs() -> Vec<Value> {
         }),
         json!({
             "name": "protocol",
-            "description": "Составить протокол/саммари встречи по файлу или записи из истории (локальный LLM).",
+            "description": "Produce a meeting protocol/summary from a file or a history recording (local LLM).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "source": src("jobId из истории ИЛИ путь к файлу"),
-                    "style": { "type": "string", "enum": ["summary", "business", "interview"], "description": "Стиль (по умолчанию business)" }
+                    "source": src("jobId from history OR a file path"),
+                    "style": { "type": "string", "enum": ["summary", "business", "interview"], "description": "Style (default business)" }
                 },
                 "required": ["source"]
             }
         }),
         json!({
             "name": "todo",
-            "description": "Извлечь список задач (чек-лист) по файлу или записи из истории (локальный LLM).",
+            "description": "Extract a task list (checklist) from a file or a history recording (local LLM).",
             "inputSchema": {
                 "type": "object",
-                "properties": { "source": src("jobId из истории ИЛИ путь к файлу") },
+                "properties": { "source": src("jobId from history OR a file path") },
                 "required": ["source"]
             }
         }),
         json!({
             "name": "summarize",
-            "description": "Сгенерировать итог по существующей записи истории.",
+            "description": "Generate a summary for an existing history recording.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "jobId": src("ID записи из истории (list_jobs)"),
-                    "kind": { "type": "string", "enum": ["summary", "business", "interview", "todo"], "description": "Тип итога" }
+                    "jobId": src("History recording ID (list_jobs)"),
+                    "kind": { "type": "string", "enum": ["summary", "business", "interview", "todo"], "description": "Summary type" }
                 },
                 "required": ["jobId"]
             }
         }),
         json!({
             "name": "list_jobs",
-            "description": "Список записей истории расшифровок (id, имя, дата, длительность).",
+            "description": "List of transcription history records (id, name, date, duration).",
             "inputSchema": { "type": "object", "properties": {} }
         }),
         json!({
             "name": "get_transcript",
-            "description": "Получить текст расшифровки по ID записи из истории.",
+            "description": "Get the transcript text by history recording ID.",
             "inputSchema": {
                 "type": "object",
-                "properties": { "jobId": src("ID записи из истории") },
+                "properties": { "jobId": src("History recording ID") },
                 "required": ["jobId"]
             }
         }),
@@ -302,7 +302,7 @@ async fn call_tool(params: &Value) -> Result<Value, (i64, String)> {
     let name = params
         .get("name")
         .and_then(|v| v.as_str())
-        .ok_or((-32602i64, "не указано имя инструмента".to_string()))?
+        .ok_or((-32602i64, "tool name not specified".to_string()))?
         .to_string();
     let args = params
         .get("arguments")
@@ -329,7 +329,7 @@ fn run_tool(name: &str, args: Value) -> Result<Value, String> {
         "summarize" => tool_summarize(&args),
         "list_jobs" => tool_list_jobs(),
         "get_transcript" => tool_get_transcript(&args),
-        other => Err(format!("неизвестный инструмент: {other}")),
+        other => Err(format!("unknown tool: {other}")),
     }
 }
 
@@ -346,7 +346,7 @@ fn tool_status() -> Result<Value, String> {
         "dataDir": engine::store::data_dir().to_string_lossy(),
     });
     let text = format!(
-        "SpeakAgent v{} — модель: {}, ASR готов: {}, LLM готов: {}",
+        "SpeakAgent v{} — model: {}, ASR ready: {}, LLM ready: {}",
         env!("CARGO_PKG_VERSION"),
         engine::models::active_id(),
         ready,
@@ -402,13 +402,13 @@ fn tool_list_jobs() -> Result<Value, String> {
             })
         })
         .collect();
-    let text = format!("{} записей в истории", arr.len());
+    let text = format!("{} records in history", arr.len());
     Ok(text_result(text, Some(json!({ "jobs": arr }))))
 }
 
 fn tool_get_transcript(args: &Value) -> Result<Value, String> {
     let job_id = arg_str(args, "jobId")?;
-    let job = engine::store::get(&job_id).ok_or("запись не найдена в истории")?;
+    let job = engine::store::get(&job_id).ok_or("recording not found in history")?;
     Ok(text_result(
         job.text.clone(),
         Some(json!({ "text": job.text, "name": job.name, "durationSec": job.duration_sec })),
@@ -426,12 +426,12 @@ fn num_threads() -> i32 {
 /// Распознать файл (+ опц. диаризация), сохранить в историю. → (jobId, text, durSec).
 fn transcribe_file(path: &str, diarize: bool, num_speakers: i32) -> Result<(String, String, f64), String> {
     if !std::path::Path::new(path).exists() {
-        return Err(format!("файл не найден: {path}"));
+        return Err(format!("file not found: {path}"));
     }
     let samples = engine::decode::decode_to_16k_mono(path)?;
     let audio_sec = samples.len() as f64 / 16000.0;
     let files = engine::models::active_asr_files()
-        .ok_or("Модель распознавания не установлена. Откройте «Настройки» и выберите модель.")?;
+        .ok_or("Recognition model is not installed. Open Settings and choose a model.")?;
     let asr = engine::asr::Asr::load(&files, num_threads())?;
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let vad = engine::models::vad();
@@ -439,7 +439,7 @@ fn transcribe_file(path: &str, diarize: bool, num_speakers: i32) -> Result<(Stri
 
     let text = if diarize {
         let (seg, emb) = engine::models::diarization()
-            .ok_or("Модели диаризации не установлены. Скачайте их в «Настройках».")?;
+            .ok_or("Diarization models are not installed. Download them in Settings.")?;
         let segs = engine::diarize::diarize(
             &seg,
             &emb,
@@ -488,21 +488,21 @@ fn resolve_source_to_job(source: &str) -> Result<String, String> {
         let (id, _t, _d) = transcribe_file(source, false, 0)?;
         return Ok(id);
     }
-    Err("источник не найден: укажите jobId из истории или путь к существующему файлу".into())
+    Err("source not found: provide a jobId from history or a path to an existing file".into())
 }
 
 fn llm_generate_job(job_id: &str, kind: &str) -> Result<Value, String> {
     let rkind = engine::llm::ResultKind::parse(kind)
-        .ok_or("неизвестный тип итога (summary|business|interview|todo)")?;
+        .ok_or("unknown summary type (summary|business|interview|todo)")?;
     if !engine::llm::is_ready() && engine::llm::cloud_config().is_none() {
         return Err(
-            "Локальный LLM не установлен. Откройте «Настройки» → «Итоги» и скачайте помощника (или настройте облачного провайдера)."
+            "Local LLM is not installed. Open Settings → Summaries and download the assistant (or configure a cloud provider)."
                 .into(),
         );
     }
-    let job = engine::store::get(job_id).ok_or("запись не найдена в истории")?;
+    let job = engine::store::get(job_id).ok_or("recording not found in history")?;
     if job.text.trim().is_empty() {
-        return Err("в записи нет текста".into());
+        return Err("recording has no text".into());
     }
     let transcript = engine::llm::prepare_transcript(&job.text, &job.speakers);
     let digest = engine::store::digest_for(job_id);
@@ -537,7 +537,7 @@ fn arg_str(args: &Value, key: &str) -> Result<String, String> {
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
-        .ok_or_else(|| format!("нужен параметр «{key}»"))
+        .ok_or_else(|| format!("missing required parameter: {key}"))
 }
 
 fn text_result(text: String, structured: Option<Value>) -> Value {

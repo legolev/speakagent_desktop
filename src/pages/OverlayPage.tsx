@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Mic, Loader2 } from "lucide-react";
+import { useT } from "../i18n";
 
 /** Плавающий индикатор записи (отдельное окно `dict-overlay`). Фон прозрачный. */
 export default function OverlayPage() {
+  const t = useT();
   // Окно показывается только во время записи → по умолчанию считаем, что пишем.
   const [processing, setProcessing] = useState(false);
 
@@ -22,7 +24,7 @@ export default function OverlayPage() {
         {processing ? (
           <>
             <Loader2 size={16} className="animate-spin text-amber-400" />
-            <span className="text-sm font-medium text-zinc-200">Распознаю…</span>
+            <span className="text-sm font-medium text-zinc-200">{t.overlay.recognizing}</span>
           </>
         ) : (
           <>
@@ -31,7 +33,7 @@ export default function OverlayPage() {
               <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
             </span>
             <Mic size={16} className="text-zinc-200" />
-            <span className="text-sm font-medium text-zinc-200">Запись…</span>
+            <span className="text-sm font-medium text-zinc-200">{t.overlay.recording}</span>
           </>
         )}
       </div>

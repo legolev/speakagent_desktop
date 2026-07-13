@@ -24,6 +24,7 @@ import { useUi } from "../store/ui";
 import ProgressBar from "../components/ProgressBar";
 import ResultView from "../components/ResultView";
 import ExportMenu from "../components/ExportMenu";
+import { useT, tr } from "../i18n";
 
 function fmtElapsed(sec: number): string {
   const h = Math.floor(sec / 3600);
@@ -46,7 +47,7 @@ function fmtDuration(sec?: number | null): string {
 }
 
 function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleString("ru-RU", {
+  return new Date(ms).toLocaleString(tr().common.locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -55,26 +56,28 @@ function fmtDate(ms: number): string {
 }
 
 function StatusBadge({ status }: { status: Job["status"] }) {
+  const t = useT();
   if (status === "running")
     return (
       <span className="inline-flex items-center gap-1 text-xs text-amber-400">
-        <Loader2 size={12} className="animate-spin" /> в работе
+        <Loader2 size={12} className="animate-spin" /> {t.transcribe.statusRunning}
       </span>
     );
   if (status === "error")
     return (
       <span className="inline-flex items-center gap-1 text-xs text-red-400">
-        <AlertCircle size={12} /> ошибка
+        <AlertCircle size={12} /> {t.transcribe.statusError}
       </span>
     );
   return (
     <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-      <Check size={12} /> готово
+      <Check size={12} /> {t.transcribe.statusDone}
     </span>
   );
 }
 
 export default function TranscribePage() {
+  const t = useT();
   const jobs = useJobs((s) => s.jobs);
   const queue = useJobs((s) => s.queue);
   const enqueue = useJobs((s) => s.enqueue);
@@ -105,17 +108,16 @@ export default function TranscribePage() {
   const deleteModal = confirmDelete && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
       <div className="glass w-full max-w-md rounded-2xl border border-white/10 p-6">
-        <div className="text-lg font-semibold text-zinc-100">Удалить запись?</div>
+        <div className="text-lg font-semibold text-zinc-100">{t.transcribe.deleteTitle}</div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Расшифровка и составленные по ней итоги будут удалены безвозвратно. Сам файл на
-          диске не трогаем.
+          {t.transcribe.deleteBody}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={() => setConfirmDelete(null)}
             className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
           >
-            Отмена
+            {t.common.cancel}
           </button>
           <button
             onClick={() => {
@@ -126,7 +128,7 @@ export default function TranscribePage() {
             }}
             className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400"
           >
-            <Trash2 size={15} /> Удалить
+            <Trash2 size={15} /> {t.common.delete}
           </button>
         </div>
       </div>
@@ -215,7 +217,7 @@ export default function TranscribePage() {
             }}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 transition hover:bg-white/10"
           >
-            <ChevronLeft size={16} /> Назад
+            <ChevronLeft size={16} /> {t.common.back}
           </button>
           <div className="min-w-0 flex-1">
             {editingName ? (
@@ -242,7 +244,7 @@ export default function TranscribePage() {
                   setNameDraft(selected.name);
                   setEditingName(true);
                 }}
-                title="Нажмите, чтобы переименовать"
+                title={t.common.clickToRename}
                 className="group flex max-w-full items-center gap-1.5 text-left"
               >
                 <span className="truncate text-sm font-medium text-zinc-100">
@@ -256,7 +258,7 @@ export default function TranscribePage() {
             )}
             <button
               onClick={() => revealFile(selected.path).catch(() => {})}
-              title={`Показать в системе: ${selected.path}`}
+              title={t.transcribe.revealInSystem(selected.path)}
               className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs text-zinc-500 transition hover:text-amber-400"
             >
               <MapPin size={11} className="shrink-0" />
@@ -270,7 +272,7 @@ export default function TranscribePage() {
             onClick={() => setConfirmDelete(selected.id)}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:bg-white/5 hover:text-red-400"
           >
-            <Trash2 size={13} /> Удалить
+            <Trash2 size={13} /> {t.common.delete}
           </button>
         </div>
         <div className="min-h-0 flex-1">
@@ -295,17 +297,16 @@ export default function TranscribePage() {
         {confirmRetranscribe && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
             <div className="glass w-full max-w-md rounded-2xl border border-white/10 p-6">
-              <div className="text-lg font-semibold text-zinc-100">Расшифровать заново?</div>
+              <div className="text-lg font-semibold text-zinc-100">{t.transcribe.retranscribeTitle}</div>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Текущий результат для этой записи будет перезаписан, а обработка может занять
-                время (зависит от длины записи и модели).
+                {t.transcribe.retranscribeBody}
               </p>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={() => setConfirmRetranscribe(null)}
                   className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
                 >
-                  Отмена
+                  {t.common.cancel}
                 </button>
                 <button
                   onClick={() => {
@@ -316,7 +317,7 @@ export default function TranscribePage() {
                   }}
                   className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
                 >
-                  Да, заново
+                  {t.transcribe.retranscribeConfirm}
                 </button>
               </div>
             </div>
@@ -331,10 +332,9 @@ export default function TranscribePage() {
   return (
     <div className="mx-auto w-full max-w-6xl p-6 lg:p-8">
       {deleteModal}
-      <h1 className="text-2xl font-semibold tracking-tight">Расшифровка</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t.transcribe.title}</h1>
       <p className="mt-1 text-sm text-zinc-400">
-        Выберите или перетащите одну или несколько записей — они встанут в очередь. Ниже —
-        все ваши расшифровки, они хранятся только на этом компьютере.
+        {t.transcribe.intro}
       </p>
 
       {/* Управление */}
@@ -343,7 +343,7 @@ export default function TranscribePage() {
           onClick={pick}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
         >
-          <FolderOpen size={16} /> Выбрать записи
+          <FolderOpen size={16} /> {t.transcribe.pickFiles}
         </button>
         <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
           <input
@@ -352,20 +352,20 @@ export default function TranscribePage() {
             onChange={(e) => setDiarize(e.target.checked)}
             className="h-4 w-4 accent-amber-500"
           />
-          <Users size={15} className="text-zinc-500" /> Определять, кто говорит
+          <Users size={15} className="text-zinc-500" /> {t.transcribe.diarizeLabel}
         </label>
         {diarize && (
           <label
             className="inline-flex items-center gap-2 text-sm text-zinc-400"
-            title="Если знаете точное число говорящих — так надёжнее, чем авто"
+            title={t.transcribe.speakersHint}
           >
-            Говорящих:
+            {t.transcribe.speakersLabel}
             <select
               value={speakers}
               onChange={(e) => setSpeakers(Number(e.target.value))}
               className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-zinc-100 outline-none transition hover:bg-white/10 focus:border-amber-500/50"
             >
-              <option value={0}>Авто</option>
+              <option value={0}>{t.common.auto}</option>
               {[2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -381,9 +381,9 @@ export default function TranscribePage() {
       {(running || queue.length > 0) && (
         <div className="glass mt-6 rounded-xl border border-white/5 p-4">
           <div className="text-sm font-medium text-zinc-300">
-            В обработке
+            {t.transcribe.inProgress}
             {queue.length > 0 && (
-              <span className="ml-2 text-xs text-zinc-500">+{queue.length} в очереди</span>
+              <span className="ml-2 text-xs text-zinc-500">{t.transcribe.plusInQueue(queue.length)}</span>
             )}
           </div>
 
@@ -398,14 +398,14 @@ export default function TranscribePage() {
                   onClick={() => cancel(running.id)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-white/5 hover:text-red-400"
                 >
-                  <Square size={11} /> Остановить
+                  <Square size={11} /> {t.common.stop}
                 </button>
               </div>
               <div className="mt-2">
                 <ProgressBar stage={running.stage} done={running.done} total={running.total} />
                 <div className="mt-1 text-xs text-zinc-500">
-                  <Clock size={11} className="mr-1 inline" /> идёт {fmtElapsed(elapsed)}
-                  {running.stage === "diarizing" && " · анализирую голоса…"}
+                  <Clock size={11} className="mr-1 inline" /> {t.transcribe.running(fmtElapsed(elapsed))}
+                  {running.stage === "diarizing" && t.transcribe.analyzingVoices}
                 </div>
               </div>
             </div>
@@ -415,11 +415,11 @@ export default function TranscribePage() {
             <div key={`${q.path}-${i}`} className="mt-2 flex items-center gap-2">
               <Clock size={14} className="shrink-0 text-zinc-600" />
               <span className="min-w-0 flex-1 truncate text-sm text-zinc-400">{q.name}</span>
-              <span className="text-xs text-zinc-600">ожидает</span>
+              <span className="text-xs text-zinc-600">{t.transcribe.waiting}</span>
               <button
                 onClick={() => dequeue(i)}
                 className="rounded-md p-1 text-zinc-500 transition hover:bg-white/5 hover:text-red-400"
-                title="Убрать из очереди"
+                title={t.transcribe.removeFromQueue}
               >
                 <X size={14} />
               </button>
@@ -432,16 +432,14 @@ export default function TranscribePage() {
       {sys && (sys.speed === "slow" || sys.ramTotalGb < 8) && (
         <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-amber-400/80">
           <AlertTriangle size={13} />
-          {sys.speed === "slow"
-            ? "слабый процессор — обработка займёт больше времени"
-            : "немного оперативной памяти — крупные модели могут тормозить"}
+          {sys.speed === "slow" ? t.transcribe.weakCpu : t.transcribe.lowRam}
         </div>
       )}
 
       {/* История таблицей */}
       <div className="mt-8 flex items-center justify-between gap-3">
         <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-          Мои расшифровки
+          {t.transcribe.historyTitle}
         </h2>
         {allHistory.length > 0 && (
           <div className="relative">
@@ -452,7 +450,7 @@ export default function TranscribePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по названию и тексту…"
+              placeholder={t.transcribe.searchPlaceholder}
               className="w-56 rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-amber-500/50"
             />
           </div>
@@ -463,20 +461,20 @@ export default function TranscribePage() {
         <div className="glass mt-3 flex flex-col items-center gap-2 rounded-xl border border-white/5 p-10 text-center">
           <FileAudio size={28} className="text-zinc-700" />
           <div className="text-sm text-zinc-400">
-            Здесь появятся ваши расшифровки — выберите запись выше.
+            {t.transcribe.emptyState}
           </div>
         </div>
       ) : history.length === 0 ? (
         <div className="mt-3 rounded-xl border border-white/5 p-6 text-center text-sm text-zinc-500">
-          Ничего не найдено по запросу «{search}».
+          {t.common.noResultsFor(search)}
         </div>
       ) : (
         <div className="mt-3 overflow-hidden rounded-xl border border-white/5">
           <div className="grid grid-cols-[1fr_6rem_8rem_8rem_2.5rem] items-center gap-3 border-b border-white/5 bg-white/[0.02] px-4 py-2 text-[11px] uppercase tracking-wide text-zinc-500">
-            <span>Название</span>
-            <span>Длит.</span>
-            <span>Статус</span>
-            <span>Дата</span>
+            <span>{t.transcribe.colName}</span>
+            <span>{t.transcribe.colDuration}</span>
+            <span>{t.transcribe.colStatus}</span>
+            <span>{t.transcribe.colDate}</span>
             <span />
           </div>
           {history.map((j) => {
@@ -504,14 +502,14 @@ export default function TranscribePage() {
                   <button
                     onClick={() => navigator.clipboard.writeText(text || "")}
                     className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/10 hover:text-zinc-200"
-                    title="Копировать текст"
+                    title={t.transcribe.copyText}
                   >
                     <Copy size={13} />
                   </button>
                   <button
                     onClick={() => setConfirmDelete(j.id)}
                     className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/10 hover:text-red-400"
-                    title="Удалить"
+                    title={t.common.delete}
                   >
                     <Trash2 size={13} />
                   </button>

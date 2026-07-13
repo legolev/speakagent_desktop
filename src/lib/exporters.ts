@@ -1,6 +1,7 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { saveText, savePdf, type PdfBlock } from "./api";
 import { parseReplicas, looksDiarized, speakerLabel } from "./diarize";
+import { tr } from "../i18n";
 
 type Names = Record<number, string> | undefined;
 
@@ -25,7 +26,7 @@ function toMd(title: string, text: string, names: Names): string {
 export async function exportTxt(name: string, text: string, names?: Names) {
   const path = await save({
     defaultPath: `${name}.txt`,
-    filters: [{ name: "Текст", extensions: ["txt"] }],
+    filters: [{ name: tr().common.pickerText, extensions: ["txt"] }],
   });
   if (path) await saveText(toTxt(text, names), path);
 }
@@ -54,7 +55,7 @@ function mdToPlain(md: string): string {
 export async function exportArtifactTxt(name: string, md: string) {
   const path = await save({
     defaultPath: `${name}.txt`,
-    filters: [{ name: "Текст", extensions: ["txt"] }],
+    filters: [{ name: tr().common.pickerText, extensions: ["txt"] }],
   });
   if (path) await saveText(mdToPlain(md), path);
 }

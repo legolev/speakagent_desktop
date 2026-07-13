@@ -30,6 +30,7 @@ import {
 } from "../lib/api";
 import { useDictation } from "../store/dictation";
 import { fmtDuration, fmtDate } from "../lib/format";
+import { useT } from "../i18n";
 
 // Browser KeyboardEvent.code → имя клавиши rdev (то, что видит бэкенд-слушатель).
 const CODE_TO_RDEV: Record<string, string> = {
@@ -63,33 +64,18 @@ function rdevName(e: KeyboardEvent): string | null {
   return null;
 }
 
-// Человекочитаемая подпись клавиши(-ш).
-const RDEV_LABEL: Record<string, string> = {
-  ShiftLeft: "Левый Shift",
-  ShiftRight: "Правый Shift",
-  ControlLeft: "Левый Ctrl",
-  ControlRight: "Правый Ctrl",
-  Alt: "Alt (лев.)",
-  AltGr: "Alt (прав.)",
-  MetaLeft: "Левый ⌘/Win",
-  MetaRight: "Правый ⌘/Win",
-  Space: "Пробел",
-  Return: "Enter",
-  UpArrow: "↑",
-  DownArrow: "↓",
-  LeftArrow: "←",
-  RightArrow: "→",
-};
-
-function prettyKey(spec: string): string {
-  if (!spec) return "—";
-  return spec
-    .split("+")
-    .map((k) => RDEV_LABEL[k] ?? k.replace(/^Key/, "").replace(/^Num/, "").replace(/^Kp/, "Num "))
-    .join(" + ");
-}
-
 export default function DictationPage() {
+  const t = useT();
+  // Человекочитаемая подпись клавиши(-ш).
+  const keyLabels = t.dictation.keyLabels as Record<string, string>;
+  function prettyKey(spec: string): string {
+    if (!spec) return "—";
+    return spec
+      .split("+")
+      .map((k) => keyLabels[k] ?? k.replace(/^Key/, "").replace(/^Num/, "").replace(/^Kp/, "Num "))
+      .join(" + ");
+  }
+
   const entries = useDictation((s) => s.entries);
   const recording = useDictation((s) => s.recording);
   const processing = useDictation((s) => s.processing);
@@ -183,12 +169,9 @@ export default function DictationPage() {
     <div className="mx-auto max-w-3xl p-8">
       <div className="flex items-center gap-3">
         <Mic size={22} className="text-amber-500" />
-        <h1 className="text-2xl font-semibold tracking-tight">Диктовка</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.dictation.title}</h1>
       </div>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-        Зажмите горячую клавишу, продиктуйте — текст мгновенно распознаётся локально,
-        копируется в буфер обмена и вставляется на курсор в любом приложении.
-      </p>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t.dictation.intro}</p>
 
       {/* Индикатор состояния + кнопка-тест */}
       <div className="glass mt-5 flex items-center justify-between gap-4 rounded-xl border border-white/5 p-4">
@@ -199,15 +182,15 @@ export default function DictationPage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-70" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
               </span>
-              Идёт запись…
+              {t.dictation.recording}
             </span>
           ) : processing ? (
             <span className="inline-flex items-center gap-2 text-sm text-amber-400">
-              <Loader2 size={14} className="animate-spin" /> Распознаю…
+              <Loader2 size={14} className="animate-spin" /> {t.dictation.processing}
             </span>
           ) : (
             <span className="inline-flex items-center gap-2 text-sm text-zinc-400">
-              <Radio size={14} /> Готов к диктовке
+              <Radio size={14} /> {t.dictation.ready}
             </span>
           )}
         </div>
@@ -217,7 +200,7 @@ export default function DictationPage() {
           onMouseLeave={() => recording && dictationStop().catch(() => {})}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition select-none hover:bg-amber-400 active:scale-95"
         >
-          <Mic size={15} /> Зажмите для записи
+          <Mic size={15} /> {t.dictation.holdToRecord}
         </button>
       </div>
 
@@ -234,13 +217,11 @@ export default function DictationPage() {
       {/* Настройки */}
       {cfg && (
         <div className="glass mt-5 space-y-4 rounded-xl border border-white/5 p-4">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Настройки</h2>
+          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">{t.dictation.settings}</h2>
 
           {/* Хоткей */}
           <div>
-            <span className="mb-1 block text-xs text-zinc-400">
-              Горячая клавиша (push-to-talk) — можно одну клавишу, напр. правый Shift
-            </span>
+            <span className="mb-1 block text-xs text-zinc-400">{t.dictation.hotkeyLabel}</span>
             <div className="flex items-center gap-2">
               <div className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100">
                 {prettyKey(cfg.hotkey)}
@@ -253,19 +234,19 @@ export default function DictationPage() {
                     : "border-white/10 text-zinc-300 hover:bg-white/5"
                 }`}
               >
-                <Keyboard size={14} /> {capturing ? "Нажмите клавишу…" : "Записать"}
+                <Keyboard size={14} /> {capturing ? t.dictation.capturing : t.dictation.record}
               </button>
             </div>
           </div>
 
           {/* Режим */}
           <div>
-            <span className="mb-1 block text-xs text-zinc-400">Режим</span>
+            <span className="mb-1 block text-xs text-zinc-400">{t.dictation.mode}</span>
             <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5">
               {(
                 [
-                  { id: "hold", label: "Зажать и говорить" },
-                  { id: "toggle", label: "Нажать старт/стоп" },
+                  { id: "hold", label: t.dictation.modeHold },
+                  { id: "toggle", label: t.dictation.modeToggle },
                 ] as const
               ).map(({ id, label }) => (
                 <button
@@ -287,25 +268,25 @@ export default function DictationPage() {
               on={cfg.autopaste}
               onClick={() => setCfg({ ...cfg, autopaste: !cfg.autopaste })}
               icon={ClipboardPaste}
-              label="Авто-вставка на курсор"
+              label={t.dictation.autopaste}
             />
             <Toggle
               on={cfg.sound}
               onClick={() => setCfg({ ...cfg, sound: !cfg.sound })}
               icon={cfg.sound ? Volume2 : VolumeX}
-              label="Звук старт/стоп"
+              label={t.dictation.sound}
             />
           </div>
 
           {/* Устройство ввода */}
           <label className="block">
-            <span className="mb-1 block text-xs text-zinc-400">Микрофон</span>
+            <span className="mb-1 block text-xs text-zinc-400">{t.dictation.mic}</span>
             <select
               value={cfg.inputDevice}
               onChange={(e) => setCfg({ ...cfg, inputDevice: e.target.value })}
               className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500/50"
             >
-              <option value="">Устройство по умолчанию</option>
+              <option value="">{t.dictation.defaultDevice}</option>
               {(devices ?? []).map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -316,13 +297,13 @@ export default function DictationPage() {
 
           {/* Модель распознавания */}
           <label className="block">
-            <span className="mb-1 block text-xs text-zinc-400">Модель распознавания</span>
+            <span className="mb-1 block text-xs text-zinc-400">{t.dictation.asrModel}</span>
             <select
               value={cfg.model}
               onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
               className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500/50"
             >
-              <option value="">Как активная (в «Настройках»)</option>
+              <option value="">{t.dictation.asActive}</option>
               {asrModels.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -336,18 +317,12 @@ export default function DictationPage() {
               onClick={save}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
             >
-              {saved ? <Check size={15} /> : <Save size={15} />} {saved ? "Сохранено" : "Сохранить"}
+              {saved ? <Check size={15} /> : <Save size={15} />} {saved ? t.common.saved : t.common.save}
             </button>
             {saveErr && <span className="text-xs text-red-400">{saveErr}</span>}
           </div>
 
-          <p className="text-xs leading-relaxed text-zinc-600">
-            На macOS дайте приложению два разрешения (System Settings → Privacy &amp; Security)
-            и перезапустите его: «Мониторинг ввода» (Input Monitoring) — чтобы срабатывала
-            глобальная клавиша даже когда окно неактивно, и «Универсальный доступ»
-            (Accessibility) — для авто-вставки. Без Accessibility текст всё равно копируется
-            в буфер обмена — вставьте вручную (⌘V).
-          </p>
+          <p className="text-xs leading-relaxed text-zinc-600">{t.dictation.macHelp}</p>
         </div>
       )}
 
@@ -355,22 +330,19 @@ export default function DictationPage() {
       {perms?.needed && (
         <div className="glass mt-5 space-y-2 rounded-xl border border-white/5 p-4">
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Разрешения macOS
+            {t.dictation.permsTitle}
           </h2>
-          <p className="text-xs leading-relaxed text-zinc-600">
-            Диктовке нужны системные разрешения. После выдачи иногда требуется перезапустить
-            приложение.
-          </p>
+          <p className="text-xs leading-relaxed text-zinc-600">{t.dictation.permsIntro}</p>
           <PermRow
             granted={perms.inputMonitoring}
-            title="Мониторинг ввода"
-            desc="чтобы горячая клавиша срабатывала, когда активно другое приложение"
+            title={t.dictation.permInputTitle}
+            desc={t.dictation.permInputDesc}
             onRequest={() => requestPermission("input-monitoring")}
           />
           <PermRow
             granted={perms.accessibility}
-            title="Универсальный доступ"
-            desc="для авто-вставки распознанного текста на курсор"
+            title={t.dictation.permAccessTitle}
+            desc={t.dictation.permAccessDesc}
             onRequest={() => requestPermission("accessibility")}
           />
         </div>
@@ -378,7 +350,7 @@ export default function DictationPage() {
 
       {/* История */}
       <div className="mt-8 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">История диктовок</h2>
+        <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">{t.dictation.historyTitle}</h2>
         <div className="flex items-center gap-2">
           {entries.length > 0 && (
             <div className="relative">
@@ -389,7 +361,7 @@ export default function DictationPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по тексту…"
+                placeholder={t.dictation.searchPlaceholder}
                 className="w-52 rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-amber-500/50"
               />
             </div>
@@ -399,7 +371,7 @@ export default function DictationPage() {
               onClick={() => setConfirmClear(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/5 hover:text-red-300"
             >
-              <Trash2 size={13} /> Очистить
+              <Trash2 size={13} /> {t.common.clear}
             </button>
           )}
         </div>
@@ -408,13 +380,11 @@ export default function DictationPage() {
       {entries.length === 0 ? (
         <div className="glass mt-3 flex flex-col items-center gap-2 rounded-xl border border-white/5 p-10 text-center">
           <Mic size={26} className="text-zinc-700" />
-          <div className="text-sm text-zinc-400">
-            Здесь появятся ваши быстрые распознавания.
-          </div>
+          <div className="text-sm text-zinc-400">{t.dictation.emptyHint}</div>
         </div>
       ) : shown.length === 0 ? (
         <div className="mt-3 rounded-xl border border-white/5 p-6 text-center text-sm text-zinc-500">
-          Ничего не найдено по запросу «{search}».
+          {t.common.noResultsFor(search)}
         </div>
       ) : (
         <div className="mt-3 overflow-hidden rounded-xl border border-white/5">
@@ -431,7 +401,7 @@ export default function DictationPage() {
               <div className="flex items-center justify-end gap-1">
                 <button
                   onClick={() => copy(d.id, d.text)}
-                  title="Копировать"
+                  title={t.common.copy}
                   className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
                 >
                   {copiedId === d.id ? (
@@ -442,7 +412,7 @@ export default function DictationPage() {
                 </button>
                 <button
                   onClick={() => remove(d.id)}
-                  title="Удалить"
+                  title={t.common.delete}
                   className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/5 hover:text-red-400"
                 >
                   <Trash2 size={15} />
@@ -456,16 +426,14 @@ export default function DictationPage() {
       {confirmClear && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
           <div className="glass w-full max-w-md rounded-2xl border border-white/10 p-6">
-            <div className="text-lg font-semibold text-zinc-100">Очистить историю диктовок?</div>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Все быстрые распознавания будут удалены безвозвратно.
-            </p>
+            <div className="text-lg font-semibold text-zinc-100">{t.dictation.clearConfirmTitle}</div>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t.dictation.clearConfirmBody}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setConfirmClear(false)}
                 className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
               >
-                Отмена
+                {t.common.cancel}
               </button>
               <button
                 onClick={() => {
@@ -474,7 +442,7 @@ export default function DictationPage() {
                 }}
                 className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400"
               >
-                <Trash2 size={15} /> Очистить
+                <Trash2 size={15} /> {t.common.clear}
               </button>
             </div>
           </div>
@@ -495,6 +463,7 @@ function PermRow({
   desc: string;
   onRequest: () => Promise<void>;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
       {granted ? (
@@ -508,14 +477,14 @@ function PermRow({
       </div>
       {granted ? (
         <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-          <Check size={13} /> выдано
+          <Check size={13} /> {t.dictation.permGranted}
         </span>
       ) : (
         <button
           onClick={() => onRequest().catch(() => {})}
           className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300 transition hover:bg-amber-500/20"
         >
-          Запросить
+          {t.dictation.permRequest}
         </button>
       )}
     </div>

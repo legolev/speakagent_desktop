@@ -18,12 +18,27 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use crate::engine::{models, prompts};
 
 /// Сообщение об отмене — по нему различаем «пользователь отменил» и реальную ошибку.
-pub const CANCELLED: &str = "отменено";
+pub const CANCELLED: &str = "cancelled";
 
 // Оценка токенов для русского: ~2.2 симв/токен; в лимитах считаем консервативно по 2.0.
 const CHARS_PER_TOKEN: f32 = 2.0;
 const CHUNK_CHARS: usize = 10_000; // map-шаг: влезает в 8k-контекст с запасом
 const IDLE_SHUTDOWN_SECS: u64 = 300; // выгрузить модель из RAM после 5 мин простоя
+
+/// Язык вывода LLM: RU по умолчанию, EN — если пользователь выбрал английский UI.
+#[derive(Clone, Copy)]
+enum Lang {
+    Ru,
+    En,
+}
+
+/// Язык вывода по настройке UI (`ui_lang`): "en" → English, иначе — русский.
+fn out_lang() -> Lang {
+    match crate::engine::store::get_setting("ui_lang").as_deref() {
+        Some("en") => Lang::En,
+        _ => Lang::Ru,
+    }
+}
 
 struct Server {
     child: Child,
@@ -75,19 +90,24 @@ impl ResultKind {
         }
     }
 
-    fn prompt(self) -> &'static str {
-        match self {
-            Self::Summary => prompts::SUMMARY,
-            Self::Business => prompts::BUSINESS,
-            Self::Interview => prompts::INTERVIEW,
-            Self::Todo => prompts::TODO,
+    fn prompt(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Summary, Lang::Ru) => prompts::SUMMARY,
+            (Self::Summary, Lang::En) => prompts::SUMMARY_EN,
+            (Self::Business, Lang::Ru) => prompts::BUSINESS,
+            (Self::Business, Lang::En) => prompts::BUSINESS_EN,
+            (Self::Interview, Lang::Ru) => prompts::INTERVIEW,
+            (Self::Interview, Lang::En) => prompts::INTERVIEW_EN,
+            (Self::Todo, Lang::Ru) => prompts::TODO,
+            (Self::Todo, Lang::En) => prompts::TODO_EN,
         }
     }
 }
 
 /// Текст промпта для экспорта «отнесу в свой ИИ-чат» (см. lib.rs::llm_export_prompt).
 pub fn prompt_text(kind: ResultKind) -> &'static str {
-    kind.prompt()
+    let lang = out_lang();
+    kind.prompt(lang)
 }
 
 impl ResultKind {
@@ -142,7 +162,7 @@ pub fn cloud_config() -> Option<(String, String, String)> {
 /// Проверка связи с облачным провайдером — мини-запрос. Ok(ответ) или понятная ошибка.
 pub fn cloud_test(url: &str, model: &str, key: &str) -> Result<String, String> {
     if key.trim().is_empty() {
-        return Err("укажите токен".into());
+        return Err("provide a token".into());
     }
     let cancel = AtomicBool::new(false);
     let reply = cloud_chat(
@@ -190,20 +210,20 @@ fn cloud_chat(
         Err(ureq::Error::Status(code, r)) => {
             let detail = r.into_string().unwrap_or_default();
             let hint = match code {
-                401 | 403 => " — проверьте токен",
-                402 => " — недостаточно средств у провайдера",
-                404 => " — проверьте адрес или название модели",
+                401 | 403 => " — check the token",
+                402 => " — insufficient funds with the provider",
+                404 => " — check the address or the model name",
                 _ => "",
             };
-            return Err(format!("облачный провайдер: HTTP {code}{hint}. {}", truncate_chars(&detail, 300)));
+            return Err(format!("cloud provider: HTTP {code}{hint}. {}", truncate_chars(&detail, 300)));
         }
-        Err(e) => return Err(format!("облачный провайдер: {e}")),
+        Err(e) => return Err(format!("cloud provider: {e}")),
     };
     let raw = resp.into_string().map_err(|e| e.to_string())?;
     let v: serde_json::Value = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
     let text = v["choices"][0]["message"]["content"].as_str().unwrap_or("").to_string();
     if text.trim().is_empty() {
-        return Err("облако вернуло пустой ответ".into());
+        return Err("the cloud returned an empty response".into());
     }
     Ok(clean_output(&text))
 }
@@ -249,7 +269,7 @@ fn health(port: u16) -> bool {
 /// Запустить (или переиспользовать) llama-server с активной моделью. Возвращает порт.
 pub fn ensure_server() -> Result<u16, String> {
     let (bin, gguf) =
-        models::llm_files().ok_or("Модель итогов не установлена. Скачайте её в «Настройках».")?;
+        models::llm_files().ok_or("The summary model is not installed. Download it in Settings.")?;
     let active = models::active_llm_id();
     touch();
 
@@ -265,7 +285,7 @@ pub fn ensure_server() -> Result<u16, String> {
     // свободный порт: биндим :0, читаем номер, отпускаем
     let port = std::net::TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
-        .map_err(|e| format!("нет свободного порта: {e}"))?
+        .map_err(|e| format!("no free port: {e}"))?
         .port();
 
     // stderr сервера — в лог-файл (диагностика, если не стартует)
@@ -307,7 +327,7 @@ pub fn ensure_server() -> Result<u16, String> {
     }
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("не удалось запустить помощника итогов: {e}"))?;
+        .map_err(|e| format!("failed to start the summary helper: {e}"))?;
 
     // ждём готовности (большой GGUF с HDD грузится долго)
     let deadline = Instant::now() + Duration::from_secs(120);
@@ -320,7 +340,7 @@ pub fn ensure_server() -> Result<u16, String> {
         }
         if Instant::now() > deadline {
             let _ = child.kill();
-            return Err("помощник итогов не ответил за 2 минуты".into());
+            return Err("the summary helper did not respond within 2 minutes".into());
         }
         std::thread::sleep(Duration::from_millis(300));
     }
@@ -339,11 +359,11 @@ fn spawn_error(status: std::process::ExitStatus) -> String {
     #[cfg(windows)]
     if status.code() == Some(-1073741515i32) {
         // 0xC0000135 STATUS_DLL_NOT_FOUND
-        return "Не хватает системного компонента Windows (Microsoft Visual C++ Redistributable). \
-                Установите его отсюда и попробуйте снова: https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        return "A required Windows system component is missing (Microsoft Visual C++ Redistributable). \
+                Install it from here and try again: https://aka.ms/vs/17/release/vc_redist.x64.exe"
             .into();
     }
-    format!("помощник итогов не запустился ({status}). Подробности: llama-server.log в папке данных")
+    format!("the summary helper failed to start ({status}). Details: llama-server.log in the data folder")
 }
 
 /// Раз в минуту проверяем простой; после 5 минут без запросов выгружаем модель из RAM.
@@ -398,7 +418,7 @@ fn chat_stream(
         .set("Content-Type", "application/json")
         .timeout(Duration::from_secs(30 * 60)) // CPU-генерация бывает долгой
         .send_string(&body.to_string())
-        .map_err(|e| format!("помощник итогов: {e}"))?;
+        .map_err(|e| format!("summary helper: {e}"))?;
 
     let mut out = String::new();
     let reader = BufReader::new(resp.into_reader());
@@ -447,9 +467,9 @@ fn chat_retry(
 }
 
 /// Сколько символов расшифровки влезает в один проход для данного промпта.
-fn single_pass_limit(kind: ResultKind) -> usize {
+fn single_pass_limit(kind: ResultKind, lang: Lang) -> usize {
     let ctx = ctx_size(crate::engine::gpu::should_offload().as_ref()) as f32;
-    let prompt_tokens = kind.prompt().chars().count() as f32 / CHARS_PER_TOKEN;
+    let prompt_tokens = kind.prompt(lang).chars().count() as f32 / CHARS_PER_TOKEN;
     let budget = ctx - kind.max_tokens() as f32 - prompt_tokens - 256.0; // 256 — сервисный запас
     (budget.max(1024.0) * CHARS_PER_TOKEN) as usize
 }
@@ -505,33 +525,38 @@ pub fn generate(
     mut on: impl FnMut(Progress),
 ) -> Result<GenOutput, String> {
     on(Progress { stage: "starting", done: 0, total: 0, partial: String::new() });
+    let lang = out_lang();
 
     // Облачный провайдер (если выбран): один запрос — контекст у облака большой,
     // map-reduce не нужен; расшифровку слегка ограничиваем, чтобы не раздувать стоимость.
     if let Some((url, model, key)) = cloud_config() {
         on(Progress { stage: "writing", done: 0, total: 0, partial: String::new() });
         let input = truncate_chars(transcript, 240_000);
-        let text = cloud_chat(&url, &model, &key, kind.prompt(), &input, kind.max_tokens() + 512, cancel)?;
+        let text = cloud_chat(&url, &model, &key, kind.prompt(lang), &input, kind.max_tokens() + 512, cancel)?;
         return Ok(GenOutput { text, digest: None });
     }
 
     let port = ensure_server()?;
-    let limit = single_pass_limit(kind);
+    let limit = single_pass_limit(kind, lang);
 
     // 1) короткая запись — один проход по самой расшифровке
     if transcript.chars().count() <= limit {
-        let text = final_call(port, kind, transcript, cancel, &mut on)?;
+        let text = final_call(port, kind, transcript, cancel, lang, &mut on)?;
         return Ok(GenOutput { text, digest: None });
     }
 
     // 2) длинная, но дайджест уже есть — финальный проход по нему
     if let Some(d) = digest.filter(|d| !d.trim().is_empty()) {
         let input = truncate_chars(d, limit);
-        let text = final_call(port, kind, &input, cancel, &mut on)?;
+        let text = final_call(port, kind, &input, cancel, lang, &mut on)?;
         return Ok(GenOutput { text, digest: None });
     }
 
     // 3) map-reduce: конспектируем фрагменты → дайджест → финальный проход
+    let chunk_prompt = match lang {
+        Lang::Ru => prompts::SUMMARIZE_CHUNK,
+        Lang::En => prompts::SUMMARIZE_CHUNK_EN,
+    };
     let chunks = split_chunks(transcript, CHUNK_CHARS);
     let total = chunks.len() as u32;
     let mut parts: Vec<String> = Vec::with_capacity(chunks.len());
@@ -540,7 +565,7 @@ pub fn generate(
             return Err(CANCELLED.into());
         }
         on(Progress { stage: "reading", done: i as u32, total, partial: String::new() });
-        match chat_retry(port, prompts::SUMMARIZE_CHUNK, chunk, 700, cancel, |_| {}) {
+        match chat_retry(port, chunk_prompt, chunk, 700, cancel, |_| {}) {
             Ok(s) => parts.push(s),
             Err(e) if e == CANCELLED => return Err(e),
             Err(_) => parts.push(truncate_chars(chunk, 1400)), // фолбэк облака: сырой кусок
@@ -550,7 +575,7 @@ pub fn generate(
 
     let built = parts.join("\n\n");
     let input = truncate_chars(&built, limit); // одноуровневый reduce, как в облаке
-    let text = final_call(port, kind, &input, cancel, &mut on)?;
+    let text = final_call(port, kind, &input, cancel, lang, &mut on)?;
     Ok(GenOutput { text, digest: Some(built) })
 }
 
@@ -560,10 +585,11 @@ fn final_call(
     kind: ResultKind,
     input: &str,
     cancel: &AtomicBool,
+    lang: Lang,
     on: &mut impl FnMut(Progress),
 ) -> Result<String, String> {
     let mut acc = String::new();
-    chat_retry(port, kind.prompt(), input, kind.max_tokens(), cancel, |tok| {
+    chat_retry(port, kind.prompt(lang), input, kind.max_tokens(), cancel, |tok| {
         acc.push_str(tok);
         on(Progress { stage: "writing", done: 0, total: 0, partial: acc.clone() });
     })
@@ -571,9 +597,14 @@ fn final_call(
 
 /// Короткое название записи по началу расшифровки (авто-переименование в истории).
 pub fn display_name(transcript: &str, cancel: &AtomicBool) -> Result<String, String> {
+    let lang = out_lang();
+    let name_prompt = match lang {
+        Lang::Ru => prompts::DISPLAY_NAME,
+        Lang::En => prompts::DISPLAY_NAME_EN,
+    };
     let port = ensure_server()?;
     let input = truncate_chars(transcript, 2000);
-    let name = chat_retry(port, prompts::DISPLAY_NAME, &input, 32, cancel, |_| {})?;
+    let name = chat_retry(port, name_prompt, &input, 32, cancel, |_| {})?;
     Ok(name.trim().trim_matches('"').trim_matches('«').trim_matches('»').to_string())
 }
 

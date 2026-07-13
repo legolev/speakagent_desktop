@@ -44,7 +44,7 @@ pub fn decode_to_16k_mono_max(path: &str, max_secs: Option<f32>) -> Result<Vec<f
             return match decode_with_ffmpeg(path, &ff, max_secs) {
                 Ok(s) => Ok(s),
                 Err(ff_err) => decode_symphonia(path, max_secs).map_err(|sym_err| {
-                    format!("не удалось декодировать (ffmpeg: {ff_err}; symphonia: {sym_err})")
+                    format!("failed to decode (ffmpeg: {ff_err}; symphonia: {sym_err})")
                 }),
             };
         }
@@ -55,7 +55,7 @@ pub fn decode_to_16k_mono_max(path: &str, max_secs: Option<f32>) -> Result<Vec<f
         Ok(s) => Ok(s),
         Err(sym_err) => match ffmpeg_bin() {
             Some(ff) => decode_with_ffmpeg(path, &ff, max_secs).map_err(|ff_err| {
-                format!("не удалось декодировать (symphonia: {sym_err}; ffmpeg: {ff_err})")
+                format!("failed to decode (symphonia: {sym_err}; ffmpeg: {ff_err})")
             }),
             None => Err(sym_err),
         },
@@ -81,9 +81,9 @@ fn decode_symphonia(path: &str, max_secs: Option<f32>) -> Result<Vec<f32>, Strin
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-        .ok_or("нет аудиодорожки")?;
+        .ok_or("no audio track")?;
     let track_id = track.id;
-    let src_rate = track.codec_params.sample_rate.ok_or("неизвестный sample rate")?;
+    let src_rate = track.codec_params.sample_rate.ok_or("unknown sample rate")?;
     let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1).max(1);
 
     let mut decoder = symphonia::default::get_codecs()
@@ -123,7 +123,7 @@ fn decode_symphonia(path: &str, max_secs: Option<f32>) -> Result<Vec<f32>, Strin
     }
 
     if mono.is_empty() {
-        return Err("пустой поток".into());
+        return Err("empty stream".into());
     }
     Ok(resample_linear(&mono, src_rate, TARGET_SR))
 }
@@ -251,7 +251,7 @@ fn decode_with_ffmpeg(path: &str, ffmpeg: &str, max_secs: Option<f32>) -> Result
 
     let out = cmd
         .output()
-        .map_err(|e| format!("не удалось запустить ffmpeg ({ffmpeg}): {e}"))?;
+        .map_err(|e| format!("failed to run ffmpeg ({ffmpeg}): {e}"))?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
@@ -262,7 +262,7 @@ fn decode_with_ffmpeg(path: &str, ffmpeg: &str, max_secs: Option<f32>) -> Result
         samples.push(f32::from_le_bytes([c[0], c[1], c[2], c[3]]));
     }
     if samples.is_empty() {
-        return Err("ffmpeg вернул пустой поток".into());
+        return Err("ffmpeg returned an empty stream".into());
     }
     Ok(samples)
 }

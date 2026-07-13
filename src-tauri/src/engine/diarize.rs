@@ -58,10 +58,10 @@ pub fn diarize(
     };
 
     let diar = OfflineSpeakerDiarization::create(&config)
-        .ok_or("не удалось создать диаризатор (проверь модели сегментации/эмбеддинга)")?;
+        .ok_or("failed to create the diarizer (check segmentation/embedding models)")?;
     let result = diar
         .process(samples)
-        .ok_or("диаризация не дала результата")?;
+        .ok_or("diarization produced no result")?;
 
     Ok(result
         .sort_by_start_time()

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "./components/Layout";
@@ -10,12 +11,18 @@ import SettingsPage from "./pages/SettingsPage";
 import AboutPage from "./pages/AboutPage";
 import { isReady } from "./lib/api";
 import { useUi } from "./store/ui";
+import { syncLangFromBackend } from "./i18n";
 
 export default function App() {
   const { data: ready } = useQuery({ queryKey: ["ready"], queryFn: isReady });
   const setupOpen = useUi((s) => s.setupOpen);
   const dismissed = useUi((s) => s.dismissedFirstRun);
   const showOnboarding = setupOpen || (ready === false && !dismissed);
+
+  // Язык интерфейса: источник истины — настройка на бэке; сверяем один раз при старте.
+  useEffect(() => {
+    void syncLangFromBackend();
+  }, []);
 
   return (
     <>

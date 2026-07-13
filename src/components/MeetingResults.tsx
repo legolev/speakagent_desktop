@@ -27,22 +27,41 @@ import {
 } from "../lib/api";
 import { useJobs } from "../store/jobs";
 import { exportArtifactMd, exportArtifactPdf, exportArtifactTxt } from "../lib/exporters";
+import { useT, tr } from "../i18n";
+
+type TDict = ReturnType<typeof useT>;
 
 export type Tab = "text" | "summary" | "protocol" | "todo";
 
-export const TABS: { id: Tab; label: string; icon: typeof AlignLeft }[] = [
-  { id: "text", label: "Текст", icon: AlignLeft },
-  { id: "summary", label: "Саммари", icon: ScrollText },
-  { id: "protocol", label: "Протокол", icon: NotebookPen },
-  { id: "todo", label: "Задачи", icon: ListChecks },
+// Вкладки: id + иконка (код). Подписи берём из словаря — см. `tabLabel`.
+export const TAB_DEFS: { id: Tab; icon: typeof AlignLeft }[] = [
+  { id: "text", icon: AlignLeft },
+  { id: "summary", icon: ScrollText },
+  { id: "protocol", icon: NotebookPen },
+  { id: "todo", icon: ListChecks },
 ];
 
-export const KIND_TITLE: Record<string, string> = {
-  summary: "Саммари",
-  business: "Протокол",
-  interview: "Протокол собеседования",
-  todo: "Задачи",
-};
+/** Подпись вкладки на текущем языке. */
+export function tabLabel(t: TDict, id: Tab): string {
+  const m: Record<Tab, string> = {
+    text: t.meeting.tabText,
+    summary: t.meeting.tabSummary,
+    protocol: t.meeting.tabProtocol,
+    todo: t.meeting.tabTodo,
+  };
+  return m[id];
+}
+
+/** Заголовок артефакта (для имён экспортных файлов) на текущем языке. */
+export function kindTitle(t: TDict, kind: string): string {
+  const m: Record<string, string> = {
+    summary: t.meeting.kindSummary,
+    business: t.meeting.kindBusiness,
+    interview: t.meeting.kindInterview,
+    todo: t.meeting.kindTodo,
+  };
+  return m[kind] ?? "";
+}
 
 interface Props {
   jobId: string;
@@ -52,6 +71,7 @@ interface Props {
 }
 
 export default function MeetingResults({ jobId, name, textLen, children }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>("text");
   const [protoStyle, setProtoStyle] = useState<"business" | "interview">("business");
   const hydrateResults = useJobs((s) => s.hydrateResults);
@@ -66,20 +86,20 @@ export default function MeetingResults({ jobId, name, textLen, children }: Props
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-1 border-b border-white/5 px-3 pt-2">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
+        {TAB_DEFS.map((d) => {
+          const Icon = d.icon;
+          const active = tab === d.id;
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={d.id}
+              onClick={() => setTab(d.id)}
               className={`inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-xs transition ${
                 active
                   ? "border-b-2 border-amber-500 text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              <Icon size={13} /> {t.label}
+              <Icon size={13} /> {tabLabel(t, d.id)}
             </button>
           );
         })}
@@ -89,8 +109,8 @@ export default function MeetingResults({ jobId, name, textLen, children }: Props
             onChange={(e) => setProtoStyle(e.target.value as "business" | "interview")}
             className="ml-auto mb-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-300 outline-none"
           >
-            <option value="business">Деловая встреча</option>
-            <option value="interview">Собеседование</option>
+            <option value="business">{t.meeting.styleBusiness}</option>
+            <option value="interview">{t.meeting.styleInterview}</option>
           </select>
         )}
       </div>
@@ -102,7 +122,7 @@ export default function MeetingResults({ jobId, name, textLen, children }: Props
           <ArtifactPanel
             jobId={jobId}
             kind={kind!}
-            exportName={`${name} — ${KIND_TITLE[kind!]}`}
+            exportName={`${name} — ${kindTitle(t, kind!)}`}
             textLen={textLen}
           />
         )}
@@ -124,6 +144,7 @@ export function ArtifactPanel({
   exportName: string;
   textLen: number;
 }) {
+  const t = useT();
   const state = useJobs((s) => s.results[jobId]?.[kind]) ?? {
     status: "idle" as const,
     done: 0,
@@ -156,15 +177,15 @@ export function ArtifactPanel({
         <div className="flex shrink-0 items-center gap-3 px-4 pt-4 text-sm text-zinc-400">
           <Loader2 size={15} className="animate-spin text-amber-500" />
           {state.stage === "reading"
-            ? `Читаю запись… ${state.done} из ${state.total}`
+            ? t.meeting.reading(state.done, state.total)
             : state.stage === "writing"
-              ? "Пишу…"
-              : "Запускаю помощника…"}
+              ? t.meeting.writing
+              : t.meeting.starting}
           <button
             onClick={() => cancel(jobId)}
             className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-white/5 hover:text-red-400"
           >
-            <Square size={11} /> Остановить
+            <Square size={11} /> {t.common.stop}
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -172,9 +193,7 @@ export function ArtifactPanel({
             <Markdown text={state.partial} />
           ) : (
             <div className="text-sm text-zinc-600">
-              {state.stage === "reading"
-                ? "Длинная запись — сначала прочитаю её по частям."
-                : "Это занимает от минуты до нескольких минут — можно уйти на другие вкладки."}
+              {state.stage === "reading" ? t.meeting.readingHint : t.meeting.writingHint}
             </div>
           )}
         </div>
@@ -191,14 +210,14 @@ export function ArtifactPanel({
             onClick={() => navigator.clipboard.writeText(state.text ?? "")}
             className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/5"
           >
-            Копировать
+            {t.common.copy}
           </button>
           <div className="flex-1" />
           <button
             onClick={() => generate(jobId, kind)}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/5"
           >
-            <RefreshCw size={12} /> Составить заново
+            <RefreshCw size={12} /> {t.meeting.regenerate}
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -225,11 +244,9 @@ export function ArtifactPanel({
         onClick={() => generate(jobId, kind)}
         className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
       >
-        <Sparkles size={15} /> {state.status === "error" ? "Попробовать снова" : "Составить"}
+        <Sparkles size={15} /> {state.status === "error" ? t.meeting.tryAgain : t.meeting.compose}
       </button>
-      <div className="max-w-sm text-xs text-zinc-600">
-        На этом компьютере — примерно {eta}. Всё считается локально, без интернета.
-      </div>
+      <div className="max-w-sm text-xs text-zinc-600">{t.meeting.etaLocal(eta)}</div>
       <CopyPromptButton jobId={jobId} kind={kind} subtle={sys?.speed !== "slow"} />
     </div>
   );
@@ -241,7 +258,7 @@ function estimateGenMinutes(chars: number, speed?: "fast" | "medium" | "slow"): 
   const perKtokMin = speed === "slow" ? 1.6 : speed === "medium" ? 0.8 : 0.4;
   const lo = Math.max(1, Math.round(ktok * perKtokMin + (speed === "slow" ? 2 : 1)));
   const hi = Math.max(lo + 1, Math.round(lo * 1.8));
-  return `${lo}–${hi} мин`;
+  return tr().meeting.minRange(lo, hi);
 }
 
 /** Запасной путь: скопировать готовый запрос (промпт + расшифровка) для внешнего ИИ. */
@@ -254,6 +271,7 @@ function CopyPromptButton({
   kind: ResultKind;
   subtle?: boolean;
 }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -273,11 +291,10 @@ function CopyPromptButton({
           subtle ? "text-zinc-500" : "text-zinc-300"
         }`}
       >
-        <ClipboardCopy size={12} /> {copied ? "Скопировано!" : "Скопировать запрос для ИИ"}
+        <ClipboardCopy size={12} /> {copied ? t.common.copiedBang : t.meeting.copyPrompt}
       </button>
       <div className="max-w-xs text-[11px] leading-snug text-zinc-600">
-        Быстрая альтернатива: вставьте скопированное в ChatGPT, Claude или другой ИИ-чат —
-        он составит итог по вашей расшифровке.
+        {t.meeting.copyPromptHint}
       </div>
     </div>
   );
@@ -292,6 +309,7 @@ function DownloadHelper({
   onDone: () => void;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   const [pct, setPct] = useState<number | null>(null);
   const [error, setError] = useState("");
 
@@ -312,17 +330,14 @@ function DownloadHelper({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-      <div className="max-w-md text-sm text-zinc-400">
-        Для итогов нужен помощник — он скачается один раз (~2,4 ГБ) и дальше работает
-        полностью офлайн.
-      </div>
+      <div className="max-w-md text-sm text-zinc-400">{t.meeting.helperNeeded}</div>
       {error && <div className="max-w-md text-xs text-red-400">{error}</div>}
       {pct === null ? (
         <button
           onClick={run}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-400"
         >
-          <Download size={15} /> Скачать помощника
+          <Download size={15} /> {t.meeting.downloadHelper}
         </button>
       ) : (
         <div className="w-64">
@@ -406,14 +421,15 @@ function toggleCheckboxAtLine(md: string, line: number): string {
 // ── Экспорт артефакта ──
 
 function ArtifactExport({ name, md }: { name: string; md: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const items = useMemo(
     () => [
       { label: "Markdown (.md)", fn: () => exportArtifactMd(name, md) },
-      { label: "Текст (.txt)", fn: () => exportArtifactTxt(name, md) },
+      { label: t.meeting.exportTxt, fn: () => exportArtifactTxt(name, md) },
       { label: "PDF", fn: () => exportArtifactPdf(name, md) },
     ],
-    [name, md],
+    [name, md, t],
   );
 
   return (
@@ -422,7 +438,7 @@ function ArtifactExport({ name, md }: { name: string; md: string }) {
         onClick={() => setOpen((o) => !o)}
         className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/5"
       >
-        <Download size={13} /> Скачать
+        <Download size={13} /> {t.meeting.download}
       </button>
       {open && (
         <>

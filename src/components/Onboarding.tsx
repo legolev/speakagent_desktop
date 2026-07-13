@@ -10,8 +10,10 @@ import {
   type DlProgress,
 } from "../lib/api";
 import { useUi } from "../store/ui";
+import { useT } from "../i18n";
 
 export default function Onboarding() {
+  const t = useT();
   const qc = useQueryClient();
   const closeSetup = useUi((s) => s.closeSetup);
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: listModels });
@@ -51,23 +53,20 @@ export default function Onboarding() {
             <AudioLines className="text-amber-500" size={22} />
           </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Добро пожаловать в SpeakAgent</h1>
-            <p className="text-sm text-zinc-400">Расшифровка речи прямо на вашем компьютере</p>
+            <h1 className="text-lg font-semibold tracking-tight">{t.onboarding.welcome}</h1>
+            <p className="text-sm text-zinc-400">{t.onboarding.sub}</p>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-          <Feature icon={WifiOff} label="Без интернета" />
-          <Feature icon={Users} label="Различает голоса" />
-          <Feature icon={Lock} label="Ничего не уходит в сеть" />
+          <Feature icon={WifiOff} label={t.onboarding.feat1} />
+          <Feature icon={Users} label={t.onboarding.feat2} />
+          <Feature icon={Lock} label={t.onboarding.feat3} />
         </div>
 
         <div className="mt-6">
-          <div className="text-sm font-medium">Выберите язык распознавания</div>
-          <p className="mt-1 text-xs text-zinc-500">
-            Модель скачается один раз (размер указан ниже) — плюс конвертер аудио (~98 МБ).
-            Остальное уже внутри приложения. Позже можно сменить в настройках.
-          </p>
+          <div className="text-sm font-medium">{t.onboarding.pickTitle}</div>
+          <p className="mt-1 text-xs text-zinc-500">{t.onboarding.pickHint}</p>
 
           <div className="mt-3 flex flex-col gap-1.5">
             {asr.map((m) => (
@@ -92,7 +91,7 @@ export default function Onboarding() {
               />
             </div>
             <div className="mt-2 text-center text-xs text-zinc-400">
-              Скачиваю модель… {Math.round((pct ?? 0) * 100)}%
+              {t.onboarding.downloadingModel(Math.round((pct ?? 0) * 100))}
             </div>
           </div>
         ) : (
@@ -101,13 +100,13 @@ export default function Onboarding() {
               onClick={closeSetup}
               className="text-xs text-zinc-500 transition hover:text-zinc-300"
             >
-              Позже
+              {t.onboarding.later}
             </button>
             <button
               onClick={go}
               className="rounded-lg bg-amber-500 px-5 py-2.5 font-medium text-zinc-950 transition hover:bg-amber-400"
             >
-              Начать
+              {t.onboarding.start}
             </button>
           </div>
         )}
@@ -146,6 +145,7 @@ function ModelRow({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   return (
     <button
       onClick={onClick}
@@ -165,15 +165,15 @@ function ModelRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="text-sm text-zinc-100">{model.name}</span>
+          <span className="text-sm text-zinc-100">{t.models[model.id]?.name ?? model.name}</span>
           {recommended && (
             <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
-              Рекомендуем
+              {t.onboarding.recommended}
             </span>
           )}
         </span>
         <span className="block text-xs text-zinc-500">
-          {model.lang} · {model.sizeMb} МБ
+          {t.models[model.id]?.lang ?? model.lang} · {t.common.mb(model.sizeMb)}
         </span>
       </span>
       {model.installed && <Check size={15} className="shrink-0 text-emerald-400" />}

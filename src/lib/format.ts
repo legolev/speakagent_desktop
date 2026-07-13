@@ -1,5 +1,7 @@
 // Общие форматтеры для истории (расшифровки и диктовка).
 
+import { tr } from "../i18n";
+
 /** Длительность в формате M:SS или H:MM:SS. */
 export function fmtDuration(sec?: number | null): string {
   if (!sec || sec <= 0) return "—";
@@ -14,7 +16,7 @@ export function fmtDuration(sec?: number | null): string {
 
 /** Дата/время в короткой русской локали. */
 export function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleString("ru-RU", {
+  return new Date(ms).toLocaleString(tr().common.locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

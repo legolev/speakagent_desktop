@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { parseReplicas, speakerLabel, timeToSec } from "../lib/diarize";
 import { highlightText } from "../lib/highlight";
+import { useT } from "../i18n";
 
 interface Props {
   text: string;
@@ -36,6 +37,7 @@ export default function DiarizeRenderer({
   onSeek,
   query,
 }: Props) {
+  const t = useT();
   const replicas = parseReplicas(text);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [val, setVal] = useState("");
@@ -70,7 +72,7 @@ export default function DiarizeRenderer({
                     if (e.key === "Enter") commit(r.speaker);
                     if (e.key === "Escape") setEditIdx(null);
                   }}
-                  placeholder={`Спикер ${r.speaker}`}
+                  placeholder={t.common.speaker(r.speaker)}
                   className="w-40 rounded bg-white/10 px-1.5 py-0.5 text-xs text-zinc-100 outline-none ring-1 ring-amber-500/50"
                 />
               ) : (
@@ -78,7 +80,7 @@ export default function DiarizeRenderer({
                   className={`font-medium ${COLOR[c]} ${
                     onRename ? "cursor-pointer hover:underline" : ""
                   }`}
-                  title={onRename ? "Нажмите, чтобы переименовать" : undefined}
+                  title={onRename ? t.common.clickToRename : undefined}
                   onClick={() => {
                     if (!onRename) return;
                     setVal(names?.[r.speaker] ?? "");
