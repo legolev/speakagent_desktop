@@ -34,7 +34,7 @@ enigo = "0.3"
 # Диктовка: короткие звуковые сигналы старт/стоп (pure-Rust, поверх cpal).
 rodio = { version = "0.19", default-features = false, features = ["wav"] }
 # Локальный MCP-сервер: HTTP (JSON-RPC поверх axum) на 127.0.0.1. Всё pure-Rust.
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros"] }
 # Движок ASR + диаризация + VAD (официальный биндинг sherpa-onnx; download-binaries = prebuilt, без сборки C++)
 # ≥1.13.4: фикс не-ASCII путей на Windows (кириллическое имя пользователя ломало загрузку моделей)
