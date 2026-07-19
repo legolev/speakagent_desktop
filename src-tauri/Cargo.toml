@@ -67,7 +67,7 @@ window-vibrancy = "0.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Глобальный слушатель клавиш диктовки: CGEventTap + CFRunLoop. Системные фреймворки.
-core-graphics = "0.24"
+core-graphics = "0.25"
 core-foundation = "0.10"
 
 [target.'cfg(windows)'.dependencies]
