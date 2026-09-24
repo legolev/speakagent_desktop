@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
-use crate::engine::{asr::Asr, decode, models};
+use crate::engine::{asr::Asr, decode, hw, models};
 
 const SR: u32 = 16000;
 const PREROLL_SEC: f32 = 0.4; // сколько аудио «до нажатия» подхватываем (тёплый стрим)
@@ -112,7 +112,7 @@ fn audio_engine(rx: mpsc::Receiver<Cmd>) {
                     (std::mem::take(&mut sh.rec), sh.src_rate, sh.channels)
                 };
                 let mono = downmix(&rec, ch);
-                let pcm = decode::resample_linear(&mono, sr.max(1), SR);
+                let pcm = decode::resample(&mono, sr.max(1), SR);
                 let _ = reply.send(Ok(pcm));
                 last_active = Instant::now();
             }
@@ -262,12 +262,6 @@ fn worker() -> &'static Mutex<Option<Sender<Job>>> {
     W.get_or_init(|| Mutex::new(None))
 }
 
-fn num_threads() -> i32 {
-    std::thread::available_parallelism()
-        .map(|n| (n.get() as i32).clamp(1, 16))
-        .unwrap_or(4)
-}
-
 fn ensure_worker() -> Sender<Job> {
     let mut g = worker().lock().unwrap();
     if let Some(tx) = g.as_ref() {
@@ -288,7 +282,7 @@ fn ensure_worker() -> Sender<Job> {
                                 "Dictation recognition model is not installed. Open Settings."
                                     .to_string()
                             })
-                            .and_then(|f| Asr::load(&f, num_threads()));
+                            .and_then(|f| Asr::load(&f, hw::ort_threads()));
                         match loaded {
                             Ok(asr) => warm = Some((want.clone(), asr)),
                             Err(e) => {

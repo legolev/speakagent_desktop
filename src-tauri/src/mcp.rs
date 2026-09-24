@@ -417,12 +417,6 @@ fn tool_get_transcript(args: &Value) -> Result<Value, String> {
 
 // ───────────────────────── Общая логика ─────────────────────────
 
-fn num_threads() -> i32 {
-    std::thread::available_parallelism()
-        .map(|n| (n.get() as i32).clamp(1, 16))
-        .unwrap_or(4)
-}
-
 /// Распознать файл (+ опц. диаризация), сохранить в историю. → (jobId, text, durSec).
 fn transcribe_file(path: &str, diarize: bool, num_speakers: i32) -> Result<(String, String, f64), String> {
     if !std::path::Path::new(path).exists() {
@@ -432,7 +426,7 @@ fn transcribe_file(path: &str, diarize: bool, num_speakers: i32) -> Result<(Stri
     let audio_sec = samples.len() as f64 / 16000.0;
     let files = engine::models::active_asr_files()
         .ok_or("Recognition model is not installed. Open Settings and choose a model.")?;
-    let asr = engine::asr::Asr::load(&files, num_threads())?;
+    let asr = engine::asr::Asr::load_parallel(&files)?;
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let vad = engine::models::vad();
     let words = asr.transcribe_words(&samples, vad.as_deref(), &cancel, |_, _, _| {});
@@ -444,7 +438,7 @@ fn transcribe_file(path: &str, diarize: bool, num_speakers: i32) -> Result<(Stri
             &seg,
             &emb,
             &samples,
-            num_threads(),
+            engine::hw::ort_threads(),
             0.8,
             num_speakers.max(0),
         )?;

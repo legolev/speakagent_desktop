@@ -93,19 +93,9 @@ struct SystemInfo {
     llm_accel: String,
 }
 
-fn physical_cores() -> usize {
-    sysinfo::System::new()
-        .physical_core_count()
-        .unwrap_or_else(|| {
-            std::thread::available_parallelism()
-                .map(|n| n.get())
-                .unwrap_or(1)
-        })
-}
-
 /// Эвристика RTF по ядрам (без диаризации) — до первого реального замера.
 fn heuristic_rtf() -> f64 {
-    match physical_cores() {
+    match engine::hw::physical_cores() {
         0..=1 => 0.30,
         2 => 0.22,
         3..=4 => 0.16,
@@ -143,7 +133,7 @@ fn estimate_overhead() -> f64 {
 fn system_info() -> SystemInfo {
     let mut sys = sysinfo::System::new();
     sys.refresh_memory();
-    let physical = physical_cores();
+    let physical = engine::hw::physical_cores();
     let logical = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1);
@@ -250,14 +240,24 @@ async fn transcribe(
 
         let started = std::time::Instant::now();
         send("decoding", 0, 0, "");
-        let samples = engine::decode::decode_to_16k_mono(&path)?;
+        // Модель грузим параллельно с декодом аудио — оба шага независимы.
+        let (samples, asr) = std::thread::scope(|s| {
+            let loader = s.spawn(|| {
+                let files = engine::models::active_asr_files().ok_or(
+                    "Recognition model is not installed. Open Settings and choose a model.",
+                )?;
+                engine::asr::Asr::load_parallel(&files)
+            });
+            let samples = engine::decode::decode_to_16k_mono(&path);
+            let asr = loader
+                .join()
+                .unwrap_or_else(|_| Err("failed to load the recognition model".into()));
+            (samples, asr)
+        });
+        let samples = samples?;
+        let asr = asr?;
         let audio_sec = samples.len() as f64 / 16000.0;
-
-        let files = engine::models::active_asr_files().ok_or(
-            "Recognition model is not installed. Open Settings and choose a model.",
-        )?;
-        let asr = engine::asr::Asr::load(&files, num_threads())?;
-        // фиксированная часть (декод + загрузка модели) — калибруем отдельно от RTF
+        // фиксированная часть (декод ‖ загрузка модели) — калибруем отдельно от RTF
         let overhead_sec = started.elapsed().as_secs_f64();
         let processing_started = std::time::Instant::now();
         // VAD для нарезки по речи (границы в тишине). Нет модели → слепые окна.
@@ -275,7 +275,7 @@ async fn transcribe(
                 &seg,
                 &emb,
                 &samples,
-                num_threads(),
+                engine::hw::ort_threads(),
                 CLUSTER_THRESHOLD,
                 n_spk,
             )?)
@@ -346,12 +346,6 @@ fn cancel_transcribe(job_id: String) {
     if let Some(f) = cancels().lock().unwrap().get(&job_id) {
         f.store(true, Ordering::Relaxed);
     }
-}
-
-fn num_threads() -> i32 {
-    std::thread::available_parallelism()
-        .map(|n| (n.get() as i32).clamp(1, 16))
-        .unwrap_or(4)
 }
 
 // ─────────────── История (SQLite) ───────────────
@@ -822,7 +816,7 @@ fn diagnostics() -> String {
         dev = device_id(),
         os = std::env::consts::OS,
         arch = std::env::consts::ARCH,
-        cores = physical_cores(),
+        cores = engine::hw::physical_cores(),
         gpuname = gpu.map(|g| g.name).unwrap_or_else(|| "none".into()),
         asr = engine::models::active_id(),
         ready = engine::models::active_asr_files().is_some(),
