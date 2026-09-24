@@ -4828,6 +4828,7 @@ dependencies = [
  "enigo",
  "flate2",
  "genpdf",
+ "libc",
  "machine-uid",
  "rodio",
  "rusqlite",

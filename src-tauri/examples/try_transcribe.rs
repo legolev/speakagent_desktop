@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use speakagent_lib::engine::{
     asr::{Asr, AsrFiles, Engine},
-    decode, diarize, models, punct,
+    decode, diarize, hw, models, punct,
 };
 
 fn main() {
@@ -123,13 +123,13 @@ fn main() {
             language: String::new(),
         }
     };
-    let asr = Asr::load(&asr_files, 16).expect("asr init");
+    let asr = Asr::load_parallel(&asr_files).expect("asr init");
 
     if do_diar {
         println!("диаризация (порог {threshold}, спикеров {}) + ASR + привязка…",
             if num_speakers > 0 { num_speakers.to_string() } else { "авто".into() });
         let t = Instant::now();
-        let segs = diarize::diarize(&seg, &emb, &samples, 16, threshold, num_speakers).expect("diarize");
+        let segs = diarize::diarize(&seg, &emb, &samples, hw::ort_threads(), threshold, num_speakers).expect("diarize");
         let nspk_raw = segs.iter().map(|s| s.speaker).collect::<HashSet<_>>().len();
         let mut words = asr.transcribe_words(&samples, vad_ref, &AtomicBool::new(false), |_, _, _| {});
         // RUPunct только для русских моделей БЕЗ своей пунктуации (как в lib.rs).

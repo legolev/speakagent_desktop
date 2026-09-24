@@ -10,6 +10,7 @@ pub mod decode;
 pub mod diarize;
 pub mod dictation;
 pub mod gpu;
+pub mod hw;
 pub mod llm;
 pub mod models;
 pub mod pdf;

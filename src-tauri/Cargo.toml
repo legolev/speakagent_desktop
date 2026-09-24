@@ -69,6 +69,8 @@ window-vibrancy = "0.5"
 # Глобальный слушатель клавиш диктовки: CGEventTap + CFRunLoop. Системные фреймворки.
 core-graphics = "0.24"
 core-foundation = "0.10"
+# sysctlbyname("hw.perflevel0.physicalcpu") — число P-ядер для потоков ORT (engine/hw.rs).
+libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 # Детект GPU (DXGI) + низкоуровневый хук клавиатуры (WH_KEYBOARD_LL) для диктовки.
