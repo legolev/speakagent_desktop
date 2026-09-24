@@ -112,7 +112,7 @@ fn audio_engine(rx: mpsc::Receiver<Cmd>) {
                     (std::mem::take(&mut sh.rec), sh.src_rate, sh.channels)
                 };
                 let mono = downmix(&rec, ch);
-                let pcm = decode::resample_linear(&mono, sr.max(1), SR);
+                let pcm = decode::resample(&mono, sr.max(1), SR);
                 let _ = reply.send(Ok(pcm));
                 last_active = Instant::now();
             }
